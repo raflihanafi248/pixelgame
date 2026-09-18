@@ -315,6 +315,21 @@ CHAPTERS = [
 ]
 
 
+# The HP bar pack: a frame with two holes and a ring, plus the three fills
+# that sit behind it. The offsets are where each fill lines up inside it.
+HUD_PARTS = {
+    "hud_frame": ("Hp bar.png", None),
+    "hud_orb": ("red bar.png", (1, 4)),
+    "hud_bar_armour": ("yellow bar.png", (66, 47)),
+    "hud_bar_time": ("Blue bar.png", (64, 55)),
+}
+
+
+def build_hud(hp_src):
+    for name, (fn, _) in HUD_PARTS.items():
+        save(Image.open(os.path.join(hp_src, fn)).convert("RGBA"), f"{name}.png")
+
+
 def main(src):
     sheet = tiles(src)
     for theme, bg_dir, season in CHAPTERS:
@@ -328,5 +343,8 @@ def main(src):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        sys.exit('usage: pack_gandalf.py "<path to the GandalfHardcore folder>"')
+        sys.exit('usage: pack_gandalf.py "<GandalfHardcore assets folder>" '
+                 '["<GandalfHardcore Hp bar folder>"]')
     main(sys.argv[1])
+    if len(sys.argv) > 2:
+        build_hud(sys.argv[2])

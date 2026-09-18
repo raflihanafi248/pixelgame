@@ -12,6 +12,7 @@ const GameState = {
     this.lives = 3;
     this.checkpointX = null;
     Buffs.clear();
+    Satchel.clear();
   },
 };
 
@@ -100,6 +101,33 @@ const SCENERY = {
   },
 };
 
+// Weather, per chapter. Leaves turn and tumble, snow falls straight and fast,
+// cave dust barely moves, mist hangs, ash rises off the lair floor.
+const WEATHER = {
+  valley: { life: 8200, speedY: { min: 26, max: 62 }, speedX: { min: -58, max: -6 },
+            scale: { min: 0.5, max: 1.5 }, alpha: 0.85, every: 200,
+            tint: [0xd98b3a, 0xc26a2a, 0xe0b45c], spin: true },
+  night:  { life: 9000, speedY: { min: 10, max: 26 }, speedX: { min: -22, max: 10 },
+            scale: { min: 0.8, max: 2.4 }, alpha: 0.28, every: 320,
+            tint: 0x9fb2e0, spin: false },
+  cave:   { life: 9500, speedY: { min: 12, max: 30 }, speedX: { min: -14, max: 14 },
+            scale: { min: 0.3, max: 0.9 }, alpha: 0.5, every: 380,
+            tint: 0xb79bff, spin: false },
+  snow:   { life: 7000, speedY: { min: 55, max: 110 }, speedX: { min: -50, max: 14 },
+            scale: { min: 0.4, max: 1.2 }, alpha: 0.95, every: 70,
+            tint: 0xffffff, spin: false },
+  lair:   { life: 6000, speedY: { min: -70, max: -18 }, speedX: { min: -24, max: 24 },
+            scale: { min: 0.35, max: 1.1 }, alpha: 0.7, every: 150,
+            tint: [0xff7a3c, 0x8a3a20], spin: true },
+};
+
+// Only the chapters with an actual sky get one.
+const SKIES = {
+  valley: { clouds: 5, cloudAlpha: 0.85, birds: true, tint: 0xffffff },
+  night:  { clouds: 3, cloudAlpha: 0.16, birds: false, tint: 0x6b7ba8 },
+  snow:   { clouds: 6, cloudAlpha: 0.7, birds: true, tint: 0xdfe9f5 },
+};
+
 const FONT = "monospace";
 // Everyone cut from the GREEN WOODS sheet: the five the story stops for, and
 // the villagers who just live here.
@@ -132,6 +160,9 @@ class BootScene extends Phaser.Scene {
     this.load.image("lantern", ASSET_DATA.lantern);
     this.load.image("spike", ASSET_DATA.spike);
     this.load.image("light", ASSET_DATA.light);
+    for (const part of ["hud_frame", "hud_orb", "hud_bar_armour", "hud_bar_time"]) {
+      this.load.image(part, ASSET_DATA[part]);
+    }
     // Scenery and set dressing: dozens of loose props, loaded by prefix so
     // adding one to the pack script does not also mean editing this list.
     for (const key of Object.keys(ASSET_DATA)) {
@@ -155,8 +186,6 @@ class BootScene extends Phaser.Scene {
     this.load.spritesheet("dragon", ASSET_DATA.dragon, { frameWidth: 256, frameHeight: 192 });
     this.load.spritesheet("fireball", ASSET_DATA.fireball, { frameWidth: 40, frameHeight: 32 });
     this.load.spritesheet("crystal", ASSET_DATA.crystal, { frameWidth: 36, frameHeight: 36 });
-    this.load.spritesheet("heart", ASSET_DATA.heart, { frameWidth: 32, frameHeight: 28 });
-    this.load.spritesheet("armor", ASSET_DATA.armor, { frameWidth: 30, frameHeight: 32 });
     this.load.image("shield", ASSET_DATA.shield);
     // The villagers come from one sheet of people, three idle frames each.
     for (const npc of CAST_FOLK) {
@@ -365,6 +394,7 @@ class GameScene extends Phaser.Scene {
       this.darkness = this.add.renderTexture(0, 0, GAME_W, GAME_H)
         .setOrigin(0).setScrollFactor(0).setDepth(45);
     }
+    this.buildSky();
     this.buildWeather();
   }
 
@@ -631,48 +661,140 @@ class GameScene extends Phaser.Scene {
     this.gate = this.physics.add.staticImage(x, GROUND_Y, "gate").setOrigin(0.5, 1).setDepth(7);
     this.gate.refreshBody();
     this.physics.add.overlap(this.player, this.gate, () => this.completeLevel());
+    // A way out should look like one: the arch stands open and turning.
+    this.add.sprite(x, GROUND_Y - 86, "portal").setScale(2.4).setDepth(6)
+      .setAlpha(0.9).play("portal-turn");
+    this.add.image(x, GROUND_Y - 86, "light").setTint(0x7fd8ff).setScale(0.5)
+      .setAlpha(0.18).setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
+    this.lanterns = this.lanterns || [];
+    this.lanterns.push({ x, y: GROUND_Y - 86 });
   }
 
+  // What falls out of the sky, per chapter: leaves turning, snow, cave dust,
+  // mist, ash off the lair. Same emitter, different weather.
   buildWeather() {
-    const tint = THEME_TINT[this.theme];
-    const speedY = this.theme === "snow" ? { min: 40, max: 90 } : { min: 24, max: 70 };
+    const w = WEATHER[this.theme];
     this.add.particles(0, 0, "particle", {
       x: { min: 0, max: GAME_W }, y: -12,
-      lifespan: 7000, speedY, speedX: { min: -40, max: 16 },
-      scale: { min: 0.4, max: 1.3 }, alpha: { start: 0.75, end: 0.15 },
-      frequency: this.theme === "snow" ? 90 : 260, tint,
+      lifespan: w.life, speedY: w.speedY, speedX: w.speedX,
+      rotate: w.spin ? { min: -180, max: 180 } : 0,
+      scale: w.scale, alpha: { start: w.alpha, end: 0.12 },
+      frequency: w.every, tint: w.tint,
     }).setScrollFactor(0).setDepth(42);
   }
 
+  // The sky is not a painted backdrop: clouds cross it and birds cross it,
+  // both slowly, both on their own parallax.
+  buildSky() {
+    this.clouds = [];
+    this.flocks = [];
+    const sky = SKIES[this.theme];
+    if (!sky) return;
+
+    for (let i = 0; i < sky.clouds; i++) {
+      const c = this.add.image(
+        Phaser.Math.Between(0, GAME_W), Phaser.Math.Between(40, 190),
+        Phaser.Utils.Array.GetRandom(["cloud_a", "cloud_b", "cloud_c", "cloud_d"]))
+        .setScrollFactor(0).setDepth(1)
+        .setScale(Phaser.Math.FloatBetween(1.4, 2.6))
+        .setAlpha(sky.cloudAlpha).setTint(sky.tint);
+      c.drift = Phaser.Math.FloatBetween(-5, -14);
+      this.clouds.push(c);
+    }
+    if (sky.birds) this.time.delayedCall(Phaser.Math.Between(1500, 6000), () => this.sendFlock());
+  }
+
+  // A flock crosses now and then and is gone - it should feel noticed, not
+  // scheduled, so the next one is always a different wait away.
+  sendFlock() {
+    if (!this.scene.isActive()) return;
+    const sky = SKIES[this.theme];
+    const fromLeft = Math.random() < 0.5;
+    const bird = this.add.image(fromLeft ? -90 : GAME_W + 90,
+                                Phaser.Math.Between(50, 170),
+                                Phaser.Utils.Array.GetRandom(["bird_a", "bird_b"]))
+      .setScrollFactor(0).setDepth(2).setScale(Phaser.Math.FloatBetween(1.6, 2.8))
+      .setAlpha(0.85).setTint(sky.tint).setFlipX(!fromLeft);
+    bird.drift = (fromLeft ? 1 : -1) * Phaser.Math.FloatBetween(34, 58);
+    bird.bobT = 0;
+    bird.baseY = bird.y;
+    this.flocks.push(bird);
+    this.time.delayedCall(Phaser.Math.Between(9000, 22000), () => this.sendFlock());
+  }
+
+  driftSky(dt) {
+    for (const c of this.clouds || []) {
+      c.x += c.drift * dt;
+      if (c.x < -c.displayWidth) { c.x = GAME_W + c.displayWidth; c.y = Phaser.Math.Between(40, 190); }
+    }
+    for (let i = (this.flocks || []).length - 1; i >= 0; i--) {
+      const b = this.flocks[i];
+      b.x += b.drift * dt;
+      b.bobT += dt * 1.4;
+      b.y = b.baseY + Math.sin(b.bobT) * 9;
+      if (b.x < -140 || b.x > GAME_W + 140) { b.destroy(); this.flocks.splice(i, 1); }
+    }
+  }
+
   buildHud() {
-    this.add.rectangle(0, 0, GAME_W, 76, 0x07060c, 0.42)
-      .setOrigin(0).setScrollFactor(0).setDepth(58);
-    this.hearts = [];
-    for (let i = 0; i < this.player?.maxHp ?? 5; i++) {
-      const h = this.add.image(26 + i * 34, 28, "heart", 0).setScrollFactor(0).setDepth(60);
-      this.hearts.push(h);
-    }
-    this.armorPips = [];
-    for (let i = 0; i < 5; i++) {   // the Ward buff widens the bar to five
-      this.armorPips.push(this.add.image(206 + i * 26, 26, "armor", 1)
-        .setScrollFactor(0).setDepth(60).setVisible(false));
-    }
+    // The orb HUD: a framed globe for health, a bar for armour, a segmented
+    // bar for how long the ability you drank has left. The fills sit behind
+    // the frame and are cropped, so they read as filling a physical vessel.
+    const S = 2, X = 10, Y = 8;
+    const at = (key, ox, oy) => this.add.image(X + ox * S, Y + oy * S, key)
+      .setOrigin(0).setScale(S).setScrollFactor(0);
+
+    this.hudOrb = at("hud_orb", 1, 4).setDepth(59);
+    this.hudArmour = at("hud_bar_armour", 66, 47).setDepth(59);
+    this.hudTime = at("hud_bar_time", 64, 55).setDepth(59);
+    at("hud_frame", 0, 0).setDepth(60);
+
+    // The count sits inside the globe, where the eye already is.
+    this.hudHp = this.add.text(X + 28 * S, Y + 31 * S, "", {
+      fontFamily: FONT, fontSize: "18px", color: "#fff1ec",
+      stroke: "#3a0606", strokeThickness: 5,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(62);
+
     // Active abilities, shown as icon + seconds remaining.
     this.buffSlots = Object.keys(ABILITIES).filter((key) => ABILITIES[key].seconds)
-      .map((key, i) => ({
+      .map((key) => ({
         key,
-        icon: this.add.image(28 + i * 62, 96, ABILITIES[key].icon)
+        icon: this.add.image(0, 184, ABILITIES[key].icon)
           .setScale(0.62).setScrollFactor(0).setDepth(60).setVisible(false),
-        text: this.add.text(44 + i * 62, 88, "", {
+        text: this.add.text(0, 176, "", {
           fontFamily: FONT, fontSize: "13px", color: "#cfe9f2",
           stroke: "#08131a", strokeThickness: 3,
         }).setScrollFactor(0).setDepth(61).setVisible(false),
       }));
-    this.livesText = this.add.text(24, 54, "", {
+
+    // The satchel: what you are carrying and the key that drinks it. Always
+    // visible, because an ability you forget you own may as well not exist.
+    this.slotHud = Object.keys(ABILITIES).map((key, i) => {
+      const sx = X + 4 + i * 54, sy = 218;
+      return {
+        key,
+        frame: this.add.rectangle(sx, sy, 46, 46, 0x120e18, 0.62)
+          .setOrigin(0).setScrollFactor(0).setDepth(59)
+          .setStrokeStyle(2, 0x4a3a28),
+        icon: this.add.image(sx + 23, sy + 21, ABILITIES[key].icon)
+          .setScale(0.62).setScrollFactor(0).setDepth(60),
+        key_: this.add.text(sx + 4, sy + 2, `${i + 1}`, {
+          fontFamily: FONT, fontSize: "11px", color: "#9c8f7f",
+        }).setScrollFactor(0).setDepth(61),
+        count: this.add.text(sx + 42, sy + 30, "", {
+          fontFamily: FONT, fontSize: "14px", color: "#ffe6b3",
+          stroke: "#0a0810", strokeThickness: 4,
+        }).setOrigin(1, 0).setScrollFactor(0).setDepth(61),
+      };
+    });
+
+    this.livesText = this.add.text(X + 4, Y + 66 * S, "", {
       fontFamily: FONT, fontSize: "15px", color: "#e8dccb",
+      stroke: "#0a0810", strokeThickness: 4,
     }).setScrollFactor(0).setDepth(60);
     this.scoreText = this.add.text(GAME_W - 24, 24, "", {
       fontFamily: FONT, fontSize: "18px", color: "#ffe6b3",
+      stroke: "#0a0810", strokeThickness: 4,
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
     this.godText = this.add.text(GAME_W / 2, 48, "INVINCIBLE", {
       fontFamily: FONT, fontSize: "14px", color: "#ffe066",
@@ -680,10 +802,12 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(61).setVisible(GameState.godMode);
     this.add.text(GAME_W - 24, 50, "F: fullscreen   M: sound", {
       fontFamily: FONT, fontSize: "12px", color: "#8d8275",
+      stroke: "#0a0810", strokeThickness: 3,
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
     this.levelText = this.add.text(GAME_W / 2, 24,
       `CHAPTER ${GameState.levelIndex + 1} — ${this.level.name}`, {
         fontFamily: FONT, fontSize: "15px", color: "#cdbfae",
+        stroke: "#0a0810", strokeThickness: 4,
       }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(60);
 
     if (this.level.boss) {
@@ -700,12 +824,29 @@ class GameScene extends Phaser.Scene {
 
   refreshHud() {
     this.godText?.setVisible(GameState.godMode);
-    this.hearts.forEach((h, i) => h.setFrame(i < this.player.hp ? 0 : 1));
+
+    // Health drains the orb from the top, like a vessel emptying. The crop is
+    // in texture pixels, so it is independent of the HUD's scale.
+    const hp = Phaser.Math.Clamp(this.player.hp / this.player.maxHp, 0, 1);
+    const oh = 54;
+    this.hudOrb.setCrop(0, oh * (1 - hp), 56, oh * hp);
+    this.hudHp.setText(`${this.player.hp}/${this.player.maxHp}`);
+
+    // Armour empties left to right, and the bar is only as long as the plates
+    // you can actually hold - the Ward buff widens it.
     const maxArmor = this.player.maxArmor;
-    this.armorPips.forEach((p, i) => {
-      p.setVisible(i < maxArmor);
-      p.setFrame(i < this.player.armor ? 0 : 1);
-    });
+    const armour = Phaser.Math.Clamp(this.player.armor / maxArmor, 0, 1);
+    this.hudArmour.setCrop(0, 0, 32 * armour, 4);
+
+    // The blue bar is the ability you drank, running out.
+    let best = 0;
+    for (const key of Object.keys(ABILITIES)) {
+      const ab = ABILITIES[key];
+      if (!ab.seconds) continue;
+      best = Math.max(best, Buffs.remaining(key) / ab.seconds);
+    }
+    this.hudTime.setCrop(0, 0, 49 * Phaser.Math.Clamp(best, 0, 1), 6);
+
     // Live buffs pack to the left, so one buff never floats in the middle.
     let slotIndex = 0;
     this.buffSlots.forEach((slot) => {
@@ -713,11 +854,20 @@ class GameScene extends Phaser.Scene {
       slot.icon.setVisible(left > 0);
       slot.text.setVisible(left > 0).setText(left > 0 ? `${left}s` : "");
       if (left > 0) {
-        slot.icon.setX(28 + slotIndex * 62);
-        slot.text.setX(44 + slotIndex * 62);
+        slot.icon.setX(30 + slotIndex * 62);
+        slot.text.setX(46 + slotIndex * 62);
         slotIndex += 1;
       }
     });
+    // The satchel greys out what you do not have, rather than hiding it, so
+    // the slot numbers never shuffle under your fingers.
+    this.slotHud.forEach((slot) => {
+      const held = Satchel.count(slot.key);
+      slot.icon.setAlpha(held ? 1 : 0.25);
+      slot.frame.setStrokeStyle(2, held ? 0xb99b6a : 0x3a2f22);
+      slot.count.setText(held ? `x${held}` : "");
+    });
+
     this.livesText.setText(`LIVES x${GameState.lives}`);
     this.scoreText.setText(`CRYSTALS  ${GameState.score}`);
   }
@@ -735,8 +885,11 @@ class GameScene extends Phaser.Scene {
       left: K.A, right: K.D, up: K.W, jump: K.SPACE,
       attack: K.J, attack2: K.X, dash: K.SHIFT, dash2: K.L,
       talk: K.E, enter: K.ENTER,
-      down: K.S, quit: K.Q, esc: K.ESC,
+      down: K.S, quit: K.Q, esc: K.ESC, use: K.U,
     });
+    // 1-5 drink whatever is in that satchel slot, without stopping to shop.
+    this.slotKeys = Object.keys(ABILITIES).map((_, i) =>
+      this.input.keyboard.addKey(K.ONE + i));
   }
 
   // ---------------------------------------------------- gameplay events
@@ -875,6 +1028,33 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  // A line of text that rises off the knight and fades. Used for anything the
+  // player needs told immediately without a panel opening.
+  floatNote(text, colour = "#ffe6b3") {
+    const note = this.add.text(this.player.x, this.player.y - 74, text, {
+      fontFamily: FONT, fontSize: "15px", color: colour,
+      stroke: "#0a0810", strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(40);
+    this.tweens.add({ targets: note, y: note.y - 44, alpha: 0, duration: 1100,
+                      onComplete: () => note.destroy() });
+  }
+
+  // Drinking something should look like it did something.
+  flashAbility(key) {
+    const ab = ABILITIES[key];
+    this.floatNote(ab.name, "#9ce8a8");
+    const burst = this.add.image(this.player.x, this.player.y - 10, "light")
+      .setTint(0x9ce8ff).setScale(0.18).setAlpha(0.5).setDepth(29)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: burst, alpha: 0, scale: 0.5, duration: 420,
+                      onComplete: () => burst.destroy() });
+    this.add.particles(this.player.x, this.player.y, "particle", {
+      speed: { min: 60, max: 170 }, lifespan: 520, quantity: 14,
+      scale: { start: 1, end: 0 }, tint: 0x9ce8ff, blendMode: "ADD",
+      emitting: false, angle: { min: 200, max: 340 },
+    }).setDepth(29).explode(14);
+  }
+
   // Crystals burst out of the knight and scatter across the ground: the loss
   // is something you see happen, not just a number that drops.
   spillCrystals(amount) {
@@ -940,6 +1120,10 @@ class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------- frame loop
   update(time) {
+    // The sky keeps moving whatever else is happening - a frozen sky behind an
+    // open shop menu is the thing that gives a backdrop away.
+    this.driftSky(this.game.loop.delta / 1000);
+
     // The market owns the keyboard while it is open.
     if (this.market.open) {
       this.player.setVelocityX(0);
@@ -950,6 +1134,7 @@ class GameScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(c.up) || Phaser.Input.Keyboard.JustDown(k.up)) this.market.move(-1);
       if (Phaser.Input.Keyboard.JustDown(c.down) || Phaser.Input.Keyboard.JustDown(k.down)) this.market.move(1);
       if (Phaser.Input.Keyboard.JustDown(k.enter)) this.market.buy();
+      if (Phaser.Input.Keyboard.JustDown(k.use)) this.market.use();
       if (Phaser.Input.Keyboard.JustDown(k.quit) || Phaser.Input.Keyboard.JustDown(k.esc)) {
         this.market.hide();
       }
@@ -1005,6 +1190,14 @@ class GameScene extends Phaser.Scene {
                    Phaser.Input.Keyboard.JustDown(k.jump),
       jumpHeld: c.up.isDown || k.up.isDown || k.jump.isDown,
     };
+    // Reach into the satchel mid-fight: 1-5, and nothing has to pause.
+    const abilityKeys = Object.keys(ABILITIES);
+    for (let i = 0; i < this.slotKeys.length; i++) {
+      if (!Phaser.Input.Keyboard.JustDown(this.slotKeys[i])) continue;
+      const res = useAbility(this, abilityKeys[i]);
+      if (!res.ok) this.floatNote(res.text, "#e08a7a");
+    }
+
     if (Phaser.Input.Keyboard.JustDown(k.attack) || Phaser.Input.Keyboard.JustDown(k.attack2)) {
       this.player.attack();
     }
