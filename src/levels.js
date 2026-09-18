@@ -36,7 +36,7 @@ const LEVELS = [
   {
     key: "forest",
     name: "The Autumn Wood",
-    theme: "autumn",
+    theme: "valley",
     width: 5400,
     goalX: 5200,
     story: [

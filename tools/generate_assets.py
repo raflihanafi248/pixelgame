@@ -39,16 +39,6 @@ def sheet_of(frames, w, h, name):
 # ==================================================================== THEMES
 # Each theme drives one level's sky, background trees/pillars and ground.
 THEMES = {
-    "autumn": {
-        "sky": ((222, 214, 227), (191, 184, 212)),
-        "fog": (216, 216, 232, 190),
-        "near": [(58, 24, 30), (86, 38, 34), (162, 72, 44), (206, 118, 58), (232, 160, 74)],
-        "far": [(46, 30, 50), (66, 44, 68), (98, 66, 96), (144, 100, 136), (176, 130, 162)],
-        "trunk": [(28, 20, 30), (44, 32, 42), (70, 51, 58), (102, 76, 74)],
-        "ground": [(245, 190, 110), (224, 150, 72), (188, 110, 56), (94, 58, 50), (74, 46, 42), (50, 30, 32), (26, 17, 21)],
-        "style": "tree",
-        "accent": (255, 196, 110),
-    },
     "night": {
         "sky": ((26, 28, 56), (54, 50, 90)),
         "fog": (86, 92, 140, 150),
@@ -253,6 +243,21 @@ def gen_ground(name, th):
     d.rectangle([0, 20, w - 1, 27], fill=dark)
     d.rectangle([0, 28, w - 1, 31], fill=deep)
     save(img, f"ground_{name}.png")
+
+def gen_ground_deep(name, th):
+    """Soil only. The surface tile has a lit top edge, which would read as a
+    second ground line if it repeated down through the rows below."""
+    w, h = 32, 32
+    _, _, _, mid, mid2, dark, deep = th["ground"]
+    img = canvas(w, h)
+    d = ImageDraw.Draw(img)
+    rnd = random.Random(hash(name) % 777)
+    d.rectangle([0, 0, w - 1, 12], fill=mid)
+    d.rectangle([0, 13, w - 1, 23], fill=dark)
+    d.rectangle([0, 24, w - 1, 31], fill=deep)
+    for _ in range(26):
+        d.point((rnd.randint(0, w - 1), rnd.randint(0, 27)), fill=rnd.choice([mid2, dark, deep]))
+    save(img, f"ground_{name}_deep.png")
 
 def gen_platform(name, th):
     w, h = 96, 28
@@ -839,6 +844,7 @@ if __name__ == "__main__":
         gen_far(theme_name, theme)
         gen_near(theme_name, theme)
         gen_ground(theme_name, theme)
+        gen_ground_deep(theme_name, theme)
         gen_platform(theme_name, theme)
     gen_goblin()
     gen_wolf("wolf", (80, 74, 82), (52, 47, 56), (108, 100, 110), (222, 66, 44))

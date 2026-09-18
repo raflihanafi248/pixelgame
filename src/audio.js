@@ -16,7 +16,7 @@
 //     things off to the left actually sound off to the left, and muffled
 
 const REVERBS = {
-  autumn: { dur: 1.2, decay: 2.6, tone: 0.55, wet: 0.22 },
+  valley: { dur: 1.2, decay: 2.6, tone: 0.55, wet: 0.22 },
   night: { dur: 1.9, decay: 2.2, tone: 0.40, wet: 0.28 },
   cave: { dur: 3.4, decay: 1.7, tone: 0.20, wet: 0.42 },
   snow: { dur: 0.9, decay: 3.4, tone: 0.62, wet: 0.16 },
@@ -27,7 +27,7 @@ const REVERBS = {
 
 // Footstep timbre per ground surface.
 const SURFACES = {
-  autumn: { freq: 900, q: 0.8, dur: 0.14, vol: 0.20, crunch: 0.55 },  // leaf litter
+  valley: { freq: 900, q: 0.8, dur: 0.14, vol: 0.20, crunch: 0.55 },  // grass and leaf litter
   night: { freq: 620, q: 0.9, dur: 0.13, vol: 0.17, crunch: 0.35 },   // damp earth
   cave: { freq: 1500, q: 2.2, dur: 0.10, vol: 0.22, crunch: 0.18 },   // bare stone
   snow: { freq: 2600, q: 1.1, dur: 0.17, vol: 0.20, crunch: 0.85 },   // squeaking snow
@@ -43,7 +43,7 @@ const MUSIC = {
     chords: [[45, 57, 60, 64], [41, 53, 57, 60], [43, 55, 59, 62], [45, 57, 60, 64]],
     arp: [0, 2, 3, 2, 1, 2, 3, 2], perc: null, arpVol: 0.1, padVol: 0.085,
   },
-  autumn: {
+  valley: {
     bpm: 84, barsPerChord: 2, padWave: "sawtooth", arpWave: "triangle",
     chords: [[45, 57, 64, 69], [50, 62, 65, 69], [43, 55, 62, 67], [41, 53, 60, 65]],
     arp: [0, 2, 3, 2, 1, 3, 2, 1], perc: null, arpVol: 0.095, padVol: 0.08, gain: 0.6,
@@ -86,7 +86,7 @@ const Sound = {
   noiseBuf: null, distCurve: null,
   muted: false,
   listenerX: 0,
-  env: "autumn",
+  env: "valley",
 
   _music: null, _musicTimer: null, _bar: 0, _nextBarTime: 0, _chordIdx: 0,
   _amb: [], _ambTimer: null,
@@ -140,7 +140,7 @@ const Sound = {
       this.distCurve[i] = ((3 + 18) * x * 20 * Math.PI) / 180 / (Math.PI + 18 * Math.abs(x));
     }
 
-    this.setEnvironment("autumn");
+    this.setEnvironment("valley");
   },
 
   resume() {
@@ -175,7 +175,7 @@ const Sound = {
 
   setEnvironment(theme) {
     if (!this.ctx) return;
-    const cfg = REVERBS[theme] || REVERBS.autumn;
+    const cfg = REVERBS[theme] || REVERBS.valley;
     if (this.env === theme && this.reverb.buffer) return;
     this.env = theme;
     this.reverb.buffer = this.makeIR(cfg.dur, cfg.decay, cfg.tone);
@@ -322,7 +322,7 @@ const Sound = {
         break;
       }
       case "step": {
-        const s = SURFACES[opts.surface] || SURFACES.autumn;
+        const s = SURFACES[opts.surface] || SURFACES.valley;
         const out = this._chain(place, this.sfxBus, 0.22);
         this._noise({
           dur: s.dur * rand(0.85, 1.15), vol: s.vol * v * rand(0.75, 1.1),
@@ -565,7 +565,7 @@ const Sound = {
       this._amb.push(src, lfo);
     };
 
-    if (theme === "autumn") {
+    if (theme === "valley") {
       mkBed({ freq: 700, q: 0.6, type: "bandpass", vol: 0.1, lfoRate: 0.08, lfoDepth: 380 });
       mkBed({ freq: 2600, q: 0.5, type: "bandpass", vol: 0.035, lfoRate: 0.13, lfoDepth: 900 });
     } else if (theme === "night") {
@@ -587,7 +587,7 @@ const Sound = {
       const t0 = this.ctx.currentTime + 0.05;
       const place = { pan: rand(-0.8, 0.8), gain: rand(0.3, 0.7), lp: 16000 };
       const out = this._chain(place, this.ambBus, 0.5);
-      if (theme === "autumn") {
+      if (theme === "valley") {
         const f = rand(1900, 3200);
         this._osc({ type: "sine", freq: f, to: f * rand(1.1, 1.5), dur: 0.11, vol: 0.1, t0, dest: out });
         this._osc({ type: "sine", freq: f * 1.4, to: f, dur: 0.09, vol: 0.06, t0: t0 + 0.13, dest: out });

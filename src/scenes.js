@@ -39,7 +39,7 @@ const Cheats = {
 
 const FONT = "monospace";
 const THEME_TINT = {
-  autumn: 0xffb066, night: 0x93a6ff, cave: 0xb79bff, snow: 0xffffff, lair: 0xff8a6a,
+  valley: 0xffc27a, night: 0x93a6ff, cave: 0xb79bff, snow: 0xffffff, lair: 0xff8a6a,
 };
 
 // ======================================================= BOOT
@@ -49,17 +49,21 @@ class BootScene extends Phaser.Scene {
   preload() {
     // Every image is an embedded base64 data URI (src/assets_data.js), so the
     // game runs from file:// with no server and no CORS trouble.
-    for (const theme of ["autumn", "night", "cave", "snow", "lair"]) {
+    for (const theme of ["valley", "night", "cave", "snow", "lair"]) {
       this.load.image(`sky_${theme}`, ASSET_DATA[`sky_${theme}`]);
       this.load.image(`far_${theme}`, ASSET_DATA[`far_${theme}`]);
       this.load.image(`near_${theme}`, ASSET_DATA[`near_${theme}`]);
       this.load.image(`ground_${theme}`, ASSET_DATA[`ground_${theme}`]);
+      this.load.image(`ground_${theme}_deep`, ASSET_DATA[`ground_${theme}_deep`]);
       this.load.image(`platform_${theme}`, ASSET_DATA[`platform_${theme}`]);
     }
     this.load.image("gate", ASSET_DATA.gate);
     this.load.image("fence", ASSET_DATA.fence);
     this.load.image("lantern", ASSET_DATA.lantern);
     this.load.image("spike", ASSET_DATA.spike);
+    this.load.image("valley_tree", ASSET_DATA.valley_tree);
+    this.load.image("valley_pine", ASSET_DATA.valley_pine);
+    this.load.image("valley_grass", ASSET_DATA.valley_grass);
     this.load.image("light", ASSET_DATA.light);
     this.load.image("particle", ASSET_DATA.particle);
 
@@ -130,10 +134,12 @@ class TitleScene extends Phaser.Scene {
   constructor() { super("title"); }
 
   create() {
-    this.add.image(0, 0, "sky_autumn").setOrigin(0).setScrollFactor(0);
-    this.add.tileSprite(0, GAME_H - 480, GAME_W, 480, "far_autumn").setOrigin(0).setAlpha(0.8);
-    this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "near_autumn").setOrigin(0);
-    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0710, 0.45).setOrigin(0);
+    this.add.image(0, 0, "sky_valley").setOrigin(0).setScrollFactor(0);
+    this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "far_valley").setOrigin(0).setAlpha(0.85);
+    this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "near_valley").setOrigin(0);
+    this.add.image(60, GAME_H - 20, "valley_tree").setOrigin(0.5, 1).setScale(0.8).setAlpha(0.9);
+    this.add.image(GAME_W - 70, GAME_H - 10, "valley_pine").setOrigin(0.5, 1).setAlpha(0.9);
+    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x140c08, 0.42).setOrigin(0);
 
     // The knight stands at the bottom; all copy sits above him so nothing overlaps.
     const knight = this.add.sprite(GAME_W / 2, 456, "hero").setScale(HERO_SCALE);
@@ -146,17 +152,20 @@ class TitleScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: "26px", color: "#f0e6d2", stroke: "#2a1410", strokeThickness: 5,
     }).setOrigin(0.5);
     this.add.text(GAME_W / 2, 184, "The forest guardian, and the wrath of the dragon", {
-      fontFamily: FONT, fontSize: "15px", color: "#c9b8a8",
+      fontFamily: FONT, fontSize: "15px", color: "#e4d6c2",
+      stroke: "#1c1108", strokeThickness: 4,
     }).setOrigin(0.5);
 
     const prompt = this.add.text(GAME_W / 2, 240, "Press  ENTER  to begin", {
       fontFamily: FONT, fontSize: "22px", color: "#ffe6b3",
+      stroke: "#1c1108", strokeThickness: 5,
     }).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
       "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)\nSHIFT   dash\nM   sound on / off\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits",
-      { fontFamily: FONT, fontSize: "14px", color: "#c4b3a0", align: "center", lineSpacing: 6 }
+      { fontFamily: FONT, fontSize: "14px", color: "#dccab4", align: "center",
+        lineSpacing: 6, stroke: "#1c1108", strokeThickness: 3 }
     ).setOrigin(0.5);
 
     Sound.resume();
@@ -261,9 +270,14 @@ class GameScene extends Phaser.Scene {
   buildBackground() {
     const t = this.theme;
     this.add.image(0, 0, `sky_${t}`).setOrigin(0).setScrollFactor(0).setDepth(0);
-    this.farLayer = this.add.tileSprite(0, GAME_H - 480, GAME_W, 480, `far_${t}`)
+    // Themes come from different sources, so take each layer's height from the
+    // texture itself rather than assuming one size fits all.
+    const layerH = (key) => this.textures.get(key).getSourceImage().height;
+    const farH = layerH(`far_${t}`);
+    const nearH = layerH(`near_${t}`);
+    this.farLayer = this.add.tileSprite(0, GAME_H - farH, GAME_W, farH, `far_${t}`)
       .setOrigin(0).setScrollFactor(0).setDepth(1);
-    this.nearLayer = this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, `near_${t}`)
+    this.nearLayer = this.add.tileSprite(0, GAME_H - nearH, GAME_W, nearH, `near_${t}`)
       .setOrigin(0).setScrollFactor(0).setDepth(2);
   }
 
@@ -280,7 +294,8 @@ class GameScene extends Phaser.Scene {
     for (let x = 0; x < this.level.width; x += GROUND_TILE) {
       if (this.inGap(x)) continue;
       for (let r = 0; r < GROUND_ROWS; r++) {
-        this.ground.create(x + GROUND_TILE / 2, GROUND_Y + r * GROUND_TILE + GROUND_TILE / 2, `ground_${t}`)
+        const tex = r === 0 ? `ground_${t}` : `ground_${t}_deep`;
+        this.ground.create(x + GROUND_TILE / 2, GROUND_Y + r * GROUND_TILE + GROUND_TILE / 2, tex)
           .setDepth(8).refreshBody();
       }
     }
@@ -304,17 +319,44 @@ class GameScene extends Phaser.Scene {
   }
 
   buildProps() {
-    // Wooden fences belong to the forest, not to caves or the dragon's lair.
-    const noFences = this.theme === "cave" || this.theme === "lair";
-    for (let x = 500; x < this.level.width - 300; x += 860) {
-      if (this.inGap(x) || noFences) continue;
-      this.add.image(x, GROUND_Y, "fence").setOrigin(0, 1).setDepth(6).setAlpha(0.95);
+    if (this.theme === "valley") {
+      this.buildValleyProps();
+    } else {
+      // Wooden fences belong to the forest, not to caves or the dragon's lair.
+      const noFences = this.theme === "cave" || this.theme === "lair";
+      for (let x = 500; x < this.level.width - 300; x += 860) {
+        if (this.inGap(x) || noFences) continue;
+        this.add.image(x, GROUND_Y, "fence").setOrigin(0, 1).setDepth(6).setAlpha(0.95);
+      }
     }
     this.lanterns = [];
     for (let x = 700; x < this.level.width - 300; x += 1120) {
       if (this.inGap(x)) continue;
       this.add.image(x, GROUND_Y, "lantern").setOrigin(0.5, 1).setDepth(7);
       this.lanterns.push({ x, y: GROUND_Y - 100 });
+    }
+  }
+
+  // Chapter 1 is dressed from the Pixel Valley pack: big oaks and pines set
+  // back behind the action, with grass tufts along the ground line.
+  buildValleyProps() {
+    for (let x = 320; x < this.level.width - 200; x += 1180) {
+      if (this.inGap(x)) continue;
+      this.add.image(x, GROUND_Y + 8, "valley_tree")
+        .setOrigin(0.5, 1).setDepth(4).setScale(0.85).setAlpha(0.92);
+    }
+    for (let x = 900; x < this.level.width - 200; x += 760) {
+      if (this.inGap(x)) continue;
+      this.add.image(x, GROUND_Y + 6, "valley_pine")
+        .setOrigin(0.5, 1).setDepth(5).setScale(0.75).setAlpha(0.95);
+    }
+    // Sparse tufts behind the action - a continuous band would bury the
+    // ground line and the enemies standing on it.
+    for (let x = 240; x < this.level.width - 120; x += 640) {
+      if (this.inGap(x)) continue;
+      this.add.image(x, GROUND_Y + 8, "valley_grass")
+        .setOrigin(0.5, 1).setDepth(7).setScale(0.8).setAlpha(0.85)
+        .setFlipX((x / 640) % 2 === 0);
     }
   }
 
@@ -728,8 +770,8 @@ class EndingScene extends Phaser.Scene {
     Sound.stopAmbience();
     Sound.setEnvironment("ending");
     Sound.startMusic("ending");
-    this.add.image(0, 0, "sky_autumn").setOrigin(0);
-    this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "near_autumn").setOrigin(0).setAlpha(0.5);
+    this.add.image(0, 0, "sky_valley").setOrigin(0);
+    this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "near_valley").setOrigin(0).setAlpha(0.6);
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0710, 0.65).setOrigin(0);
 
     this.add.text(GAME_W / 2, 90, "THE FOREST DRAWS BREATH AGAIN", {
