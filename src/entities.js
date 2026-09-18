@@ -2,6 +2,9 @@
 
 const HERO_SCALE = 2;
 
+// The dragon keeps clear of the lair's entrance, where the last stall stands.
+const LAIR_MIN_X = 660;
+
 // --- Player ---------------------------------------------------------------
 class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -351,15 +354,16 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
     this.nextPhaseAt = 0;
     this.nextShotAt = 0;
     this.hoverY = 190;
-    this.groundY = GROUND_Y - 88; // feet sit on the ground in the rest pose
+    this.groundY = GROUND_Y - 90; // feet sit on the ground in the rest pose
     this.dir = -1;
     this.roaring = false;
     this.bobT = Math.random() * Math.PI * 2;
 
     this.setDepth(18);
     this.body.setAllowGravity(false);
-    this.body.setSize(150, 110);
-    this.body.setOffset(50, 60);
+    // Torso, neck and head - the parts a sword can reach.
+    this.body.setSize(126, 132);
+    this.body.setOffset(72, 66);
     this.play("dragon-fly");
 
     // The roar animation carries the fire: the breath leaves the mouth on the
@@ -421,7 +425,7 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
     const dirToPlayer = this.scene.player.x < this.x ? -1 : 1;
     Sound.play("fire", { x: this.x });
     for (let i = -1; i <= 1; i++) {
-      const ball = this.scene.fireballs.get(this.x + dirToPlayer * 90, this.y - 34);
+      const ball = this.scene.fireballs.get(this.x + dirToPlayer * 80, this.y - 12);
       if (!ball) continue;
       ball.setActive(true).setVisible(true);
       ball.body.enable = true;
@@ -429,7 +433,7 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
       ball.play("fireball-fly");
       ball.setFlipX(dirToPlayer < 0);
       const angle = Phaser.Math.Angle.Between(
-        this.x, this.y - 34, this.scene.player.x, this.scene.player.y);
+        this.x, this.y - 12, this.scene.player.x, this.scene.player.y);
       const spread = angle + i * 0.22;
       ball.setVelocity(Math.cos(spread) * 330, Math.sin(spread) * 330);
     }
@@ -461,7 +465,9 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
       // Buoyant drift: the sprite's own flap plus a slow world-space bob.
       const targetY = this.hoverY + Math.sin(this.bobT) * 16;
       this.setVelocityY((targetY - this.y) * 2);
-      if (this.x < 280) this.dir = 1;
+      // It keeps to its own end of the hall - the near end is where the road
+      // comes in, and it should never come down on top of the stall there.
+      if (this.x < LAIR_MIN_X) this.dir = 1;
       if (this.x > this.scene.levelWidth - 280) this.dir = -1;
       this.setVelocityX(this.dir * 110 * rush);
       if (!this.roaring) this.setFlipX(this.dir > 0);
@@ -473,7 +479,7 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityY((player.y - 40 - this.y) * 3);
       this.setVelocityX(this.swoopDir * 320 * rush);
       this.setFlipX(this.swoopDir > 0);
-      if (this.x < 220 || this.x > this.scene.levelWidth - 220) this.swoopDir *= -1;
+      if (this.x < LAIR_MIN_X - 60 || this.x > this.scene.levelWidth - 220) this.swoopDir *= -1;
     } else {
       // Landed: the window where the player can reach it with a sword.
       this.setVelocityY((this.groundY - this.y) * 3);
