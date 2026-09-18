@@ -21,6 +21,11 @@ const DEATH_PENALTY = 25;
 const kn = (text) => ({ speaker: "Knight", portrait: "knight", text });
 const say = (speaker, portrait) => (text) => ({ speaker, portrait, text });
 
+// Helper: someone who lives here. They have no lines - they walk their patch,
+// watch you go by, and run when something with teeth turns up.
+const folk = (id, x, spread = 90) =>
+  ({ id, x, home: [x - spread, x + spread] });
+
 // Helper: an arc of collectible crystals, the shape of a jump.
 function arc(x, y, count, step = 54, rise = 26) {
   const out = [];
@@ -88,6 +93,15 @@ const LEVELS = [
       ...arc(8280, 244, 5), ...row(8420, 330, 3),
     ],
     checkpoints: [1250, 2650, 4150, 5500, 6900, 8100],
+    // Places, not decoration: each one is somewhere people are camped, and the
+    // scenery generator leaves room around them.
+    camps: [
+      { x: 700, kind: "camp", span: 540 },
+      { x: 2180, kind: "market", span: 460 },
+      { x: 4830, kind: "camp", span: 540 },
+      { x: 7520, kind: "market", span: 460 },
+    ],
+    torches: [1500, 3500, 5700, 8400],
     npcs: [
       {
         id: "maren", x: 520, name: "Elder Maren",
@@ -111,7 +125,7 @@ const LEVELS = [
         ],
       },
       {
-        id: "bram", x: 4750, name: "Bram",
+        id: "bram", x: 4900, name: "Bram",
         lines: [
           say("Bram", "bram")("You're the warden's man. Good. Then tell me why my axe won't bite."),
           say("Bram", "bram")("Cut into an oak this morning and it bled warm. Warm, like a throat."),
@@ -125,6 +139,10 @@ const LEVELS = [
         // A second stall before the deep wood: last chance to spend a full purse.
         id: "merchant", x: 7520, name: "Odrin the Pedlar", shop: true,
       },
+      folk("villager_woman", 620, 110), folk("villager_child", 760, 130),
+      folk("villager_hand", 860, 80), folk("villager_man", 2060, 70),
+      folk("villager_old", 2300, 50), folk("villager_child", 4700, 120),
+      folk("villager_woman", 4980, 90), folk("villager_man", 7420, 80),
     ],
   },
   {
@@ -158,6 +176,12 @@ const LEVELS = [
       ...row(3100, 162, 3), ...arc(4400, 244, 5), ...row(5150, 330, 4),
     ],
     checkpoints: [1150, 2600, 4150],
+    camps: [
+      { x: 1084, kind: "graves", span: 460 },
+      { x: 3400, kind: "market", span: 460 },
+      { x: 5100, kind: "camp", span: 540 },
+    ],
+    torches: [820, 2400, 4500, 5500],
     npcs: [
       {
         id: "wisp", x: 2600, name: "The Wisp", float: true,
@@ -170,6 +194,27 @@ const LEVELS = [
         ],
         after: [say("The Wisp", "wisp")("Down. Down and under the roots. The stone is waiting.")],
       },
+      {
+        id: "merchant", x: 3400, name: "Odrin the Pedlar", shop: true,
+        lines: [
+          say("Odrin", "merchant")("Don't look so surprised. Where the road is worst is where the trade is."),
+          kn("You followed me in here?"),
+          say("Odrin", "merchant")("I followed the custom. You are the custom."),
+          say("Odrin", "merchant")("Stock's the same, prices are the same. I'm not a thief, whatever the elder says."),
+        ],
+      },
+      {
+        id: "villager_hand", x: 1084, name: "The Gravedigger",
+        lines: [
+          say("The Gravedigger", "villager_hand")("Mind the fresh ones. The soil hasn't settled."),
+          kn("How many this month?"),
+          say("The Gravedigger", "villager_hand")("Nine. And not one of them from an animal, before you ask."),
+          say("The Gravedigger", "villager_hand")("They walk in from the west and they lie down. That's all. They just lie down."),
+        ],
+        after: [say("The Gravedigger", "villager_hand")("Keep your lantern lit and keep walking.")],
+      },
+      folk("villager_old", 5060, 70), folk("villager_woman", 5180, 80),
+      folk("villager_man", 3320, 60),
     ],
   },
   {
@@ -207,6 +252,12 @@ const LEVELS = [
       ...arc(4710, 244, 5), ...row(4940, 162, 4),
     ],
     checkpoints: [1000, 2750, 4350],
+    camps: [
+      { x: 900, kind: "mine", span: 460 },
+      { x: 3900, kind: "market", span: 460 },
+      { x: 4288, kind: "mine", span: 460 },
+    ],
+    torches: [700, 1200, 2400, 3100, 4600, 5700],
     npcs: [
       {
         id: "gethin", x: 2600, name: "Gethin",
@@ -220,6 +271,15 @@ const LEVELS = [
         ],
         after: [say("Gethin", "gethin")("Go on up. I'll keep reading. Someone should.")],
       },
+      {
+        id: "merchant", x: 3900, name: "Odrin the Pedlar", shop: true,
+        lines: [
+          say("Odrin", "merchant")("Careful where you put your feet. Half this floor is older than the other half."),
+          say("Odrin", "merchant")("The diggers pay in raw stone. I'll take yours cut, if you have it."),
+        ],
+      },
+      folk("villager_hand", 860, 70), folk("villager_man", 940, 60),
+      folk("villager_old", 4240, 60), folk("villager_hand", 4340, 70),
     ],
   },
   {
@@ -254,6 +314,12 @@ const LEVELS = [
       ...row(3240, 162, 3), ...arc(4310, 244, 5), ...row(4940, 330, 4),
     ],
     checkpoints: [1200, 2750, 4150],
+    camps: [
+      { x: 1110, kind: "camp", span: 540 },
+      { x: 3488, kind: "market", span: 460 },
+      { x: 5150, kind: "camp", span: 540 },
+    ],
+    torches: [900, 2500, 4400, 5500],
     npcs: [
       {
         id: "yvane", x: 1750, name: "Yvane",
@@ -268,6 +334,16 @@ const LEVELS = [
         ],
         after: [say("Yvane", "yvane")("Go. Before the cold finishes what it started.")],
       },
+      {
+        id: "merchant", x: 3488, name: "Odrin the Pedlar", shop: true,
+        lines: [
+          say("Odrin", "merchant")("Gods, there you are. I was starting to think I'd freeze out here for nothing."),
+          kn("You should turn back, Odrin."),
+          say("Odrin", "merchant")("And carry all this down again? No. Buy something, then we're both better off."),
+        ],
+      },
+      folk("villager_woman", 1060, 70), folk("villager_child", 1160, 60),
+      folk("villager_old", 5100, 60),
     ],
   },
   {
@@ -288,6 +364,20 @@ const LEVELS = [
     enemies: [],
     crystals: [],
     checkpoints: [],
+    camps: [{ x: 444, kind: "market", span: 460 }],
+    torches: [640, 1480],
+    npcs: [
+      {
+        id: "merchant", x: 444, name: "Odrin the Pedlar", shop: true,
+        lines: [
+          say("Odrin", "merchant")("This is as far as I go. I mean that this time."),
+          kn("Then why set the stall up at all?"),
+          say("Odrin", "merchant")("Because you'll want everything I have, and because someone should see you off."),
+          say("Odrin", "merchant")("Spend it all, knight. You cannot take crystals where you're going."),
+        ],
+        after: [say("Odrin", "merchant")("Still here. Still not going in there with you.")],
+      },
+    ],
   },
 ];
 

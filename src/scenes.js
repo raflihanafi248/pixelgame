@@ -59,7 +59,55 @@ const Hotkeys = {
   },
 };
 
+// What each chapter is dressed with, back to front. The packs ship three
+// seasons of the same props, which lines up with the chapters almost exactly;
+// the cave and the lair have no plant life, so they are dressed in stone.
+const SCENERY = {
+  valley: {
+    back: ["pine_autumn", "pine_gold", "tree_autumn"],
+    mid: ["birch_autumn", "trunk_bare"],
+    bush: ["prop_bush_autumn_0", "prop_bush_autumn_1", "prop_bush_autumn_2"],
+    grass: ["tallgrass_autumn_0", "tallgrass_autumn_1", "tallgrass_autumn_2",
+            "prop_wheat_4", "prop_wheat_6"],
+    rocks: ["prop_rocks_autumn_0", "prop_leafpile"],
+  },
+  night: {
+    back: ["pine_green", "trunk_bare"],
+    mid: ["trunk_bare", "birch_autumn"],
+    bush: ["prop_bush_green_1", "prop_bush_green_2"],
+    grass: ["tallgrass_green_0", "tallgrass_green_2", "prop_reeds"],
+    rocks: ["prop_rocks_0", "prop_grave_a"],
+    tint: 0x8fa2d8, // moonlight, so the green pack reads as night
+  },
+  cave: {
+    back: [], mid: ["prop_wall"],
+    bush: [], grass: [],
+    rocks: ["prop_rocks_0", "prop_statue"],
+    tint: 0xb9a9d6,
+  },
+  snow: {
+    back: ["pine_snow", "tree_snow"],
+    mid: ["birch_snow", "trunk_bare"],
+    bush: ["prop_bush_snow_0", "prop_bush_snow_1", "prop_bush_snow_2"],
+    grass: ["tallgrass_snow_0", "tallgrass_snow_1", "prop_snowpile"],
+    rocks: ["prop_rocks_snow_0"],
+  },
+  lair: {
+    back: [], mid: ["trunk_bare"],
+    bush: [], grass: [],
+    rocks: ["prop_rocks_0"],
+    tint: 0xd98a72,
+  },
+};
+
 const FONT = "monospace";
+// Everyone cut from the GREEN WOODS sheet: the five the story stops for, and
+// the villagers who just live here.
+const CAST_FOLK = [
+  "maren", "bram", "merchant", "gethin", "yvane",
+  "villager_child", "villager_man", "villager_woman", "villager_hand", "villager_old",
+];
+
 const THEME_TINT = {
   valley: 0xffc27a, night: 0x93a6ff, cave: 0xb79bff, snow: 0xffffff, lair: 0xff8a6a,
 };
@@ -83,10 +131,18 @@ class BootScene extends Phaser.Scene {
     this.load.image("fence", ASSET_DATA.fence);
     this.load.image("lantern", ASSET_DATA.lantern);
     this.load.image("spike", ASSET_DATA.spike);
-    this.load.image("valley_tree", ASSET_DATA.valley_tree);
-    this.load.image("valley_pine", ASSET_DATA.valley_pine);
-    this.load.image("valley_grass", ASSET_DATA.valley_grass);
     this.load.image("light", ASSET_DATA.light);
+    // Scenery and set dressing: dozens of loose props, loaded by prefix so
+    // adding one to the pack script does not also mean editing this list.
+    for (const key of Object.keys(ASSET_DATA)) {
+      if (/^(prop_|tree_|pine_|birch_|tallgrass_|trunk_|cloud_|bird_|willow|sky_sun)/.test(key)) {
+        this.load.image(key, ASSET_DATA[key]);
+      }
+    }
+    this.load.spritesheet("campfire", ASSET_DATA.campfire, { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet("torch", ASSET_DATA.torch, { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet("torch_wall", ASSET_DATA.torch_wall, { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet("portal", ASSET_DATA.portal, { frameWidth: 64, frameHeight: 64 });
     this.load.image("particle", ASSET_DATA.particle);
 
     this.load.spritesheet("hero", ASSET_DATA.hero, { frameWidth: 128, frameHeight: 64 });
@@ -102,12 +158,15 @@ class BootScene extends Phaser.Scene {
     this.load.spritesheet("heart", ASSET_DATA.heart, { frameWidth: 32, frameHeight: 28 });
     this.load.spritesheet("armor", ASSET_DATA.armor, { frameWidth: 30, frameHeight: 32 });
     this.load.image("shield", ASSET_DATA.shield);
-    for (const npc of ["maren", "bram", "gethin", "yvane", "wisp", "merchant"]) {
-      this.load.spritesheet(`npc_${npc}`, ASSET_DATA[`npc_${npc}`], { frameWidth: 64, frameHeight: 80 });
+    // The villagers come from one sheet of people, three idle frames each.
+    for (const npc of CAST_FOLK) {
+      this.load.spritesheet(`npc_${npc}`, ASSET_DATA[`npc_${npc}`], { frameWidth: 96, frameHeight: 120 });
       this.load.image(`portrait_${npc}`, ASSET_DATA[`portrait_${npc}`]);
     }
+    // The wisp is not a person and keeps its own drifting sheet.
+    this.load.spritesheet("npc_wisp", ASSET_DATA.npc_wisp, { frameWidth: 64, frameHeight: 80 });
+    this.load.image("portrait_wisp", ASSET_DATA.portrait_wisp);
     this.load.image("portrait_knight", ASSET_DATA.portrait_knight);
-    this.load.spritesheet("companion", ASSET_DATA.companion, { frameWidth: 96, frameHeight: 64 });
     for (const icon of ["whet", "swift", "ward", "ember", "heart"]) {
       this.load.image(`icon_${icon}`, ASSET_DATA[`icon_${icon}`]);
     }
@@ -154,17 +213,19 @@ class BootScene extends Phaser.Scene {
     A.create({ key: "dragon-death", frames: A.generateFrameNumbers("dragon", { start: 18, end: 21 }), frameRate: 5 });
     A.create({ key: "dragon-rest", frames: A.generateFrameNumbers("dragon", { start: 22, end: 23 }), frameRate: 1.6, repeat: -1 });
     A.create({ key: "fireball-fly", frames: A.generateFrameNumbers("fireball", { start: 0, end: 1 }), frameRate: 10, repeat: -1 });
-    for (const npc of ["maren", "bram", "gethin", "yvane", "merchant"]) {
-      A.create({ key: `npc-${npc}`, frames: A.generateFrameNumbers(`npc_${npc}`, { start: 0, end: 1 }),
+    for (const npc of CAST_FOLK) {
+      A.create({ key: `npc-${npc}`, frames: A.generateFrameNumbers(`npc_${npc}`, { start: 0, end: 2 }),
                  frameRate: 2, repeat: -1 });
     }
     A.create({ key: "npc-wisp", frames: A.generateFrameNumbers("npc_wisp", { start: 0, end: 3 }),
                frameRate: 6, repeat: -1 });
-    A.create({ key: "dog-idle", frames: A.generateFrameNumbers("companion", { start: 0, end: 1 }), frameRate: 2, repeat: -1 });
-    A.create({ key: "dog-run", frames: A.generateFrameNumbers("companion", { start: 2, end: 5 }), frameRate: 13, repeat: -1 });
-    A.create({ key: "dog-attack", frames: A.generateFrameNumbers("companion", { start: 6, end: 7 }), frameRate: 12 });
-    A.create({ key: "dog-hurt", frames: A.generateFrameNumbers("companion", { start: 8, end: 8 }), frameRate: 3 });
     A.create({ key: "crystal-spin", frames: A.generateFrameNumbers("crystal", { start: 0, end: 3 }), frameRate: 8, repeat: -1 });
+
+    // Set dressing that moves on its own.
+    A.create({ key: "campfire-burn", frames: A.generateFrameNumbers("campfire", { start: 0, end: 39 }), frameRate: 14, repeat: -1 });
+    A.create({ key: "torch-burn", frames: A.generateFrameNumbers("torch", { start: 0, end: 5 }), frameRate: 10, repeat: -1 });
+    A.create({ key: "torch-wall-burn", frames: A.generateFrameNumbers("torch_wall", { start: 0, end: 5 }), frameRate: 10, repeat: -1 });
+    A.create({ key: "portal-turn", frames: A.generateFrameNumbers("portal", { start: 0, end: 9 }), frameRate: 12, repeat: -1 });
 
     this.scene.start("title");
   }
@@ -204,7 +265,7 @@ class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
-      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)      SHIFT   dash\nE   talk / trade      M   sound on / off      F   fullscreen\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits\nSpend crystals at a merchant. Fall, and you drop 25 of them.\nThe wolf hunts beside you and cannot be killed.",
+      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)      SHIFT   dash\nE   talk / trade      M   sound on / off      F   fullscreen\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits\nSpend crystals at a merchant. Fall, and you drop 25 of them.",
       { fontFamily: FONT, fontSize: "14px", color: "#dccab4", align: "center",
         lineSpacing: 6, stroke: "#1c1108", strokeThickness: 3 }
     ).setOrigin(0.5);
@@ -360,45 +421,143 @@ class GameScene extends Phaser.Scene {
   }
 
   buildProps() {
-    if (this.theme === "valley") {
-      this.buildValleyProps();
-    } else {
-      // Wooden fences belong to the forest, not to caves or the dragon's lair.
-      const noFences = this.theme === "cave" || this.theme === "lair";
-      for (let x = 500; x < this.level.width - 300; x += 860) {
-        if (this.inGap(x) || noFences) continue;
-        this.add.image(x, GROUND_Y, "fence").setOrigin(0, 1).setDepth(6).setAlpha(0.95);
-      }
-    }
+    this.buildScenery();
+    this.buildCamps();
+
     this.lanterns = [];
-    for (let x = 700; x < this.level.width - 300; x += 1120) {
-      if (this.inGap(x)) continue;
-      this.add.image(x, GROUND_Y, "lantern").setOrigin(0.5, 1).setDepth(7);
-      this.lanterns.push({ x, y: GROUND_Y - 100 });
+    for (const t of this.level.torches || []) {
+      this.add.sprite(t, GROUND_Y - 4, "torch").setOrigin(0.5, 1)
+        .setScale(2).setDepth(7).play("torch-burn");
+      this.lanterns.push({ x: t, y: GROUND_Y - 76 });
     }
   }
 
-  // Chapter 1 is dressed from the Pixel Valley pack: big oaks and pines set
-  // back behind the action, with grass tufts along the ground line.
-  buildValleyProps() {
-    for (let x = 320; x < this.level.width - 200; x += 1180) {
-      if (this.inGap(x)) continue;
-      this.add.image(x, GROUND_Y + 8, "valley_tree")
-        .setOrigin(0.5, 1).setDepth(4).setScale(0.85).setAlpha(0.92);
+  // Trees, bushes and grass, scattered with a seeded generator so a chapter
+  // looks hand-dressed but comes out identical every time you replay it.
+  buildScenery() {
+    const set = SCENERY[this.theme];
+    if (!set) return;
+    const rnd = new Phaser.Math.RandomDataGenerator([this.level.key]);
+    const clear = (x, pad) => !this.inGap(x) && !this.nearCamp(x, pad);
+
+    const scatter = (keys, from, step, jitter, depth, scale, alpha, y, pad = 150) => {
+      if (!keys || !keys.length) return;
+      for (let x = from; x < this.level.width - 160; x += step) {
+        const px = Math.round(x + rnd.between(-jitter, jitter));
+        if (px < 120 || !clear(px, pad)) continue;
+        this.add.image(px, y, rnd.pick(keys))
+          .setOrigin(0.5, 1).setDepth(depth)
+          .setScale(rnd.realInRange(scale[0], scale[1]))
+          .setAlpha(alpha).setFlipX(rnd.frac() < 0.5)
+          .setTint(set.tint || 0xffffff);
+      }
+    };
+
+    // Back to front: distant trees, then nearer ones, then ground cover.
+    scatter(set.back, 260, 520, 150, 3, [0.62, 0.86], 0.72, GROUND_Y + 10);
+    scatter(set.mid, 560, 690, 190, 5, [0.85, 1.12], 0.95, GROUND_Y + 8);
+    scatter(set.rocks, 900, 1300, 260, 6, [0.9, 1.4], 1, GROUND_Y + 6);
+    // Ground cover is allowed right up to a camp - people trample paths, they
+    // do not clear the whole meadow.
+    scatter(set.bush, 420, 300, 100, 7, [0.9, 1.5], 1, GROUND_Y + 6, -80);
+    scatter(set.grass, 200, 170, 70, 7, [0.9, 1.6], 1, GROUND_Y + 6, -110);
+    // One sparse band in front of everything, so the ground has depth.
+    scatter(set.grass, 340, 560, 180, 22, [1.7, 2.4], 0.95, GROUND_Y + 26, -110);
+  }
+
+  // People camp where it is safe, so nothing hunts inside one. An enemy placed
+  // in a camp is pushed to whichever edge it was nearest - which also means
+  // moving a camp never strands a monster in the middle of it.
+  outsideCamps(x) {
+    // Two camps close together are one settlement, so merge their zones first
+    // - pushing out of one and into the next would bounce forever.
+    if (!this.safeZones) {
+      const zones = (this.level.camps || [])
+        .map((c) => [c.x - (c.span || 260) / 2 - 110, c.x + (c.span || 260) / 2 + 110])
+        .sort((a, b) => a[0] - b[0]);
+      this.safeZones = [];
+      for (const z of zones) {
+        const last = this.safeZones[this.safeZones.length - 1];
+        if (last && z[0] <= last[1]) last[1] = Math.max(last[1], z[1]);
+        else this.safeZones.push(z.slice());
+      }
     }
-    for (let x = 900; x < this.level.width - 200; x += 760) {
-      if (this.inGap(x)) continue;
-      this.add.image(x, GROUND_Y + 6, "valley_pine")
-        .setOrigin(0.5, 1).setDepth(5).setScale(0.75).setAlpha(0.95);
+    for (const [a, b] of this.safeZones) {
+      if (x <= a || x >= b) continue;
+      x = Phaser.Math.Clamp(x - a < b - x ? a : b, 200, this.level.width - 200);
     }
-    // Sparse tufts behind the action - a continuous band would bury the
-    // ground line and the enemies standing on it.
-    for (let x = 240; x < this.level.width - 120; x += 640) {
-      if (this.inGap(x)) continue;
-      this.add.image(x, GROUND_Y + 8, "valley_grass")
-        .setOrigin(0.5, 1).setDepth(7).setScale(0.8).setAlpha(0.85)
-        .setFlipX((x / 640) % 2 === 0);
+    return x;
+  }
+
+  nearCamp(x, pad) {
+    return (this.level.camps || []).some((c) => Math.abs(c.x - x) < (c.span || 260) / 2 + pad);
+  }
+
+  // A camp is somewhere people actually live: tents, a fire someone lit, a
+  // washing line, and the clutter of having stayed a while.
+  buildCamps() {
+    this.fires = [];
+    for (const camp of this.level.camps || []) {
+      const rnd = new Phaser.Math.RandomDataGenerator([this.level.key + camp.x]);
+      const g = GROUND_Y + 4;
+      const put = (key, dx, depth = 6, scale = 2) =>
+        this.add.image(camp.x + dx, g, key).setOrigin(0.5, 1)
+          .setDepth(depth).setScale(scale);
+
+      if (camp.kind === "market") {
+        put("prop_tent", -40, 5, 2.2);
+        put("prop_stall", 64, 6, 2);
+        put("prop_basket", 124, 7, 2);
+        put("prop_bottles", 20, 7, 2);
+        put("prop_crate", -150, 6, 2);
+        this.lightFire(camp.x + 190, g, 1.6);
+      } else if (camp.kind === "graves") {
+        put("prop_grave_a", -110, 6, 2);
+        put("prop_cross", -20, 6, 2);
+        put("prop_grave_b", 70, 6, 2);
+        put("prop_mourner", 160, 6, 2);
+      } else if (camp.kind === "mine") {
+        put("prop_crates", -120, 6, 2);
+        put("prop_statue", 40, 6, 2.4);
+        put("prop_barrels", 150, 6, 2);
+        this.lightFire(camp.x - 30, g, 1.5);
+      } else {
+        put("prop_tent", -120, 5, 2.3);
+        put(rnd.frac() < 0.5 ? "prop_tent_worn" : "prop_tent", 110, 5, 2);
+        put("prop_firewood", 200, 7, 2);
+        put("prop_washline", -250, 6, 2);
+        put("prop_chopblock", 260, 7, 2);
+        this.lightFire(camp.x, g, 2);
+      }
+      // Every settlement burns a torch or two: it is how you see it coming.
+      for (const dx of camp.kind === "graves" ? [-190, 200] : [-300, 300]) {
+        this.add.sprite(camp.x + dx, g, "torch").setOrigin(0.5, 1)
+          .setScale(2).setDepth(7).play("torch-burn");
+        this.lanterns = this.lanterns || [];
+        this.lanterns.push({ x: camp.x + dx, y: GROUND_Y - 76 });
+      }
     }
+  }
+
+  lightFire(x, y, scale) {
+    const fire = this.add.sprite(x, y, "campfire").setOrigin(0.5, 1)
+      .setScale(scale).setDepth(7).play("campfire-burn");
+    // A fire throws light: the soft radial the darkness overlay uses, not the
+    // hard 8px particle, or it reads as a yellow box sitting on the ground.
+    const glow = this.add.image(x, y - 26 * scale, "light")
+      .setTint(0xff9a3c).setScale(0.42 * scale).setAlpha(0.2).setDepth(6)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: glow, alpha: 0.3, scale: 0.48 * scale,
+                      duration: 640, yoyo: true, repeat: -1 });
+    this.add.particles(x, y - 22 * scale, "particle", {
+      speedY: { min: -70, max: -140 }, speedX: { min: -16, max: 16 },
+      lifespan: 1300, scale: { start: 0.9, end: 0 }, quantity: 1,
+      frequency: 140, tint: [0xffb347, 0xff7a2f], alpha: { start: 0.8, end: 0 },
+      blendMode: "ADD",
+    }).setDepth(8);
+    this.lanterns = this.lanterns || [];
+    this.lanterns.push({ x, y: y - 40 });
+    this.fires.push({ x, y });
   }
 
   buildPickups() {
@@ -428,22 +587,13 @@ class GameScene extends Phaser.Scene {
     this.shieldFx = this.add.image(this.player.x, this.player.y, "shield")
       .setDepth(21).setVisible(false);
 
-    // The enemy group must exist before anything collides with it: this scene
-    // instance is reused between levels, so a collider registered against a
-    // stale `this.enemies` would point at the previous run's destroyed group.
+    this.safeZones = null; // the scene instance is reused between levels
     this.enemies = this.add.group();
     for (const e of this.level.enemies || []) {
       const cfg = ENEMY_TYPES[e.type];
       const y = cfg.flying ? GROUND_Y - 180 : GROUND_Y - 60;
-      this.enemies.add(new Enemy(this, e.type, e.x, y));
+      this.enemies.add(new Enemy(this, e.type, this.outsideCamps(e.x), y));
     }
-
-    this.wolf = new Companion(this, this.spawnX - 70, GROUND_Y - 120);
-    this.physics.add.collider(this.wolf, this.ground);
-    this.physics.add.collider(this.wolf, this.platforms);
-    this.physics.add.overlap(this.wolf, this.enemies, (dog, en) => {
-      if (en.alive_) dog.hurtBy(en, this.time.now);
-    });
 
     this.market = new Market(this);
     this.dialogue = new DialogueBox(this);
@@ -822,7 +972,8 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.npcs.forEach((n) => n.refresh(this.player));
+    const mobs = this.enemies.getChildren();
+    this.npcs.forEach((n) => { n.live(time, this.player, mobs); n.refresh(this.player); });
     if (Phaser.Input.Keyboard.JustDown(this.keys.talk)) {
       const who = this.npcs.find((n) => n.inRange(this.player));
       if (who) {
@@ -862,7 +1013,6 @@ class GameScene extends Phaser.Scene {
     }
     this.player.handleInput(input);
 
-    this.wolf.tick(time, this.player, this.enemies.getChildren());
     this.enemies.getChildren().forEach((en) => en.tick(this.player));
     if (this.boss) this.boss.tick(time, this.player);
 

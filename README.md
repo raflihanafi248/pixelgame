@@ -75,7 +75,6 @@ Every sound is synthesised live through the Web Audio API — there is not a sin
 - **Armour** — every enemy you defeat grants three plates of armour. While it holds (a shell around the knight, three shield pips in the HUD) hits land on the armour instead of your health. The third hit shatters it; defeat another enemy to earn it back. Pits stay lethal — armour will not save you there.
 - **Checkpoints** — stone lanterns along the way; dying returns you to the last one.
 - **Crystals** — the game's currency. You pick them up along the route and earn them for defeating enemies, and you spend them at a merchant.
-- **The wolf** — a companion runs the whole game with you. It heels a little behind, breaks off to hunt anything that comes within reach of you, bites on its own, and yelps and limps back to your side when it is hurt. It cannot be killed; it just needs a moment to recover.
 - **Pits** — falling costs a life, **and 25 crystals**. They burst out of you and scatter across the ground where you fell, so you watch the loss happen.
 
 ## The market
@@ -103,7 +102,7 @@ index.html           the game page
 src/levels.js        the five levels, their story text and every conversation
 src/audio.js         audio engine (music, effects, ambience, reverb)
 src/dialogue.js      the conversation box and the NPCs who use it
-src/entities.js      Player (combo, dash, health), Enemy, Dragon (boss), Companion (the wolf)
+src/entities.js      Player (combo, dash, health), Enemy, Dragon (boss)
 src/market.js        the abilities, the buff timers and the stall UI
 src/scenes.js        boot, title, story cards, gameplay, game over, ending
 src/main.js          Phaser configuration

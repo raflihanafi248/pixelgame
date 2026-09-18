@@ -456,40 +456,6 @@ const Sound = {
         }
         break;
       }
-      case "bark": { // the companion calling: two short barks, throat then air
-        const out = this._chain(place, this.sfxBus, 0.4);
-        for (const [dly, f] of [[0, rand(320, 400)], [0.16, rand(280, 350)]]) {
-          this._osc({ type: "sawtooth", freq: f, to: f * 0.45, dur: 0.11,
-                      vol: 0.22 * v, t0: t0 + dly, dest: out, curve: "linear" });
-          this._noise({ dur: 0.09, vol: 0.16 * v, freq: 1400, to: 500, q: 1.1,
-                        t0: t0 + dly, dest: out });
-        }
-        break;
-      }
-      case "growl": {
-        const out = this._chain(place, this.sfxBus, 0.35);
-        this._osc({ type: "sawtooth", freq: rand(90, 110), to: 62, dur: 0.7,
-                    vol: 0.16 * v, t0, dest: out, curve: "linear" });
-        this._noise({ dur: 0.7, vol: 0.12 * v, freq: 360, to: 180, q: 3,
-                      t0, dest: out });
-        break;
-      }
-      case "bite": {
-        const out = this._chain(place, this.sfxBus, 0.3);
-        this._noise({ dur: 0.05, vol: 0.26 * v, freq: 3400, to: 900, q: 0.9, t0, dest: out });
-        this._noise({ dur: 0.13, vol: 0.2 * v, freq: 500, to: 160, q: 0.9,
-                      type: "lowpass", t0: t0 + 0.01, dest: out });
-        this._metal({ base: rand(1300, 1700), partials: [1, 2.3], dur: 0.1,
-                      vol: 0.05 * v, t0, dest: out });
-        break;
-      }
-      case "yelp": {
-        const out = this._chain(place, this.sfxBus, 0.4);
-        this._osc({ type: "sawtooth", freq: rand(520, 620), to: 240, dur: 0.3,
-                    vol: 0.2 * v, t0, dest: out });
-        this._noise({ dur: 0.2, vol: 0.1 * v, freq: 1800, to: 700, q: 2, t0, dest: out });
-        break;
-      }
       case "shopOpen": {
         const out = this._chain(place, this.sfxBus, 0.5);
         this._noise({ dur: 0.3, vol: 0.12 * v, freq: 900, to: 2600, q: 0.8, t0, dest: out });
