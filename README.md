@@ -30,6 +30,7 @@ Lalu buka `http://localhost:8080`.
 | `W` / `↑` / `SPASI` | Lompat (tahan untuk lompat lebih tinggi) |
 | `J` atau `X` | Serang — combo pedang 3 tahap, serangan udara saat melompat |
 | `SHIFT` atau `L` | Dash menghindar (kebal sesaat) |
+| `M` | Nyalakan / matikan suara |
 | `ENTER` | Lanjut di layar judul / cerita |
 
 ## Level
@@ -39,6 +40,18 @@ Lalu buka `http://localhost:8080`.
 3. **Gua Kristal** — platforming bertingkat, kelelawar, duri.
 4. **Puncak Beku** — permukaan licin, serigala es.
 5. **Sarang Sang Naga** — pertarungan boss dengan pola serangan (melayang & menembak bola api, menukik, lalu mendarat — saat mendarat itulah celahmu menyerang).
+
+## Audio
+
+Semua suara disintesis langsung lewat Web Audio API — tidak ada satu pun file audio, jadi ukuran game tidak bertambah dan tetap jalan dari `file://`.
+
+- **Musik** bergaya sinematik per level: lapisan pad (saw yang di-detune lewat filter bergerak), sub bass, arpeggio, dan perkusi (taiko di sarang naga, tetesan air di gua).
+- **Efek suara berlapis** seperti praktik sound design sungguhan: transient (hentakan awal) + body (bagian bernada) + tail (ekor noise & reverb). Dentang logam dibuat dari partial inharmonis, raungan naga dari saw terdistorsi lewat filter formant.
+- **Reverb konvolusi** dengan impulse response yang dibuat sendiri per lingkungan — gua bergema 3,4 detik dan gelap, salju hanya 0,9 detik dan kering.
+- **Langkah kaki per permukaan** — daun kering, tanah lembap, batu, salju yang berderik, abu — dipicu berdasarkan jarak tempuh sehingga selalu selaras dengan animasi lari.
+- **Posisi stereo** mengikuti posisi objek di dunia: musuh di sebelah kiri terdengar dari kiri, dan makin jauh makin pelan serta makin teredam.
+- **Ambience** per level: angin menyapu dedaunan, jangkrik malam, tetesan air gua, badai salju, dentum rendah di sarang naga.
+- Setiap bunyi diacak sedikit nada dan volumenya agar tidak terdengar berulang identik.
 
 ## Sistem
 
@@ -52,6 +65,7 @@ Lalu buka `http://localhost:8080`.
 ```
 index.html           halaman game
 src/levels.js        data 5 level + teks cerita
+src/audio.js         mesin audio (musik, efek, ambience, reverb)
 src/entities.js      Player (combo, dash, HP), Enemy, Dragon (boss)
 src/scenes.js        boot, judul, kartu cerita, gameplay, game over, ending
 src/main.js          konfigurasi Phaser

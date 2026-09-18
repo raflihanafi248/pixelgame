@@ -54,6 +54,14 @@ class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // Browsers keep audio suspended until the player interacts, so hook
+    // both key and pointer input and resume from there.
+    Sound.init();
+    const wake = () => Sound.resume();
+    this.input.keyboard.on("keydown", wake);
+    this.input.on("pointerdown", wake);
+    this.input.keyboard.on("keydown-M", () => Sound.toggleMute());
+
     const A = this.anims;
     const hero = (key, start, end, frameRate, repeat = 0) =>
       A.create({ key, frames: A.generateFrameNumbers("hero", { start, end }), frameRate, repeat });
@@ -117,11 +125,17 @@ class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
-      "A / D  atau  ←  →   bergerak\nW / ↑ / SPASI   lompat\nJ   serang (combo 3x)\nSHIFT   dash menghindar",
+      "A / D  atau  ←  →   bergerak\nW / ↑ / SPASI   lompat\nJ   serang (combo 3x)\nSHIFT   dash menghindar\nM   nyalakan / matikan suara",
       { fontFamily: FONT, fontSize: "14px", color: "#c4b3a0", align: "center", lineSpacing: 6 }
     ).setOrigin(0.5);
 
+    Sound.resume();
+    Sound.setEnvironment("title");
+    Sound.startMusic("title");
+
     this.input.keyboard.once("keydown-ENTER", () => {
+      Sound.resume();
+      Sound.play("select");
       GameState.reset();
       this.scene.start("story");
     });
@@ -156,7 +170,12 @@ class StoryScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: go, alpha: 1, duration: 500, delay: 400 + level.story.length * 700 });
 
-    this.input.keyboard.once("keydown-ENTER", () => this.scene.start("game"));
+    Sound.startMusic(level.theme);
+
+    this.input.keyboard.once("keydown-ENTER", () => {
+      Sound.play("select");
+      this.scene.start("game");
+    });
   }
 }
 
@@ -196,6 +215,10 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(180, 120);
     this.cameras.main.fadeIn(400);
+    Sound.setEnvironment(this.theme);
+    Sound.startMusic(this.theme);
+    Sound.startAmbience(this.theme);
+    this.events.once("shutdown", () => Sound.stopAmbience());
 
     if (level.dark) {
       this.darkness = this.add.renderTexture(0, 0, GAME_W, GAME_H)
@@ -354,6 +377,9 @@ class GameScene extends Phaser.Scene {
     this.scoreText = this.add.text(GAME_W - 24, 24, "", {
       fontFamily: FONT, fontSize: "18px", color: "#ffe6b3",
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
+    this.add.text(GAME_W - 24, 50, "M: suara", {
+      fontFamily: FONT, fontSize: "12px", color: "#8d8275",
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
     this.levelText = this.add.text(GAME_W / 2, 24,
       `BAB ${GameState.levelIndex + 1} — ${this.level.name}`, {
         fontFamily: FONT, fontSize: "15px", color: "#cdbfae",
@@ -396,6 +422,7 @@ class GameScene extends Phaser.Scene {
   collect(gem) {
     if (!gem.active) return;
     gem.disableBody(true, true);
+    Sound.play("pickup", { x: gem.x });
     GameState.score += 1;
     this.refreshHud();
     const spark = this.add.image(gem.x, gem.y, "particle").setDepth(30).setTint(0x7fe0ff);
@@ -409,6 +436,7 @@ class GameScene extends Phaser.Scene {
     if (cp.activated) return;
     cp.activated = true;
     cp.setFrame(1);
+    Sound.play("checkpoint", { x: cp.x });
     this.spawnX = cp.x;
     GameState.checkpointX = cp.x;
     const msg = this.add.text(cp.x, GROUND_Y - 130, "Titik aman", {
@@ -489,6 +517,7 @@ class GameScene extends Phaser.Scene {
   completeLevel() {
     if (this.levelComplete) return;
     this.levelComplete = true;
+    Sound.play("levelClear");
     this.player.setVelocity(0, 0);
     this.player.body.enable = false;
     this.cameras.main.fade(800, 0, 0, 0);
@@ -536,6 +565,7 @@ class GameScene extends Phaser.Scene {
     }
 
     const camX = this.cameras.main.scrollX;
+    Sound.setListener(camX + GAME_W / 2); // stereo placement follows the camera
     this.farLayer.tilePositionX = camX * 0.25;
     this.nearLayer.tilePositionX = camX * 0.55;
 
@@ -563,6 +593,9 @@ class GameOverScene extends Phaser.Scene {
   constructor() { super("gameover"); }
 
   create() {
+    Sound.stopMusic();
+    Sound.stopAmbience();
+    Sound.play("gameOver");
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0508).setOrigin(0);
     this.add.text(GAME_W / 2, 190, "KEGELAPAN MENANG", {
       fontFamily: FONT, fontSize: "40px", color: "#e0564a",
@@ -580,6 +613,7 @@ class GameOverScene extends Phaser.Scene {
     this.tweens.add({ targets: p, alpha: 0.3, duration: 700, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once("keydown-ENTER", () => {
+      Sound.play("select");
       GameState.lives = 3;
       GameState.checkpointX = null;
       this.scene.start("story");
@@ -592,6 +626,9 @@ class EndingScene extends Phaser.Scene {
   constructor() { super("ending"); }
 
   create() {
+    Sound.stopAmbience();
+    Sound.setEnvironment("ending");
+    Sound.startMusic("ending");
     this.add.image(0, 0, "sky_autumn").setOrigin(0);
     this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "near_autumn").setOrigin(0).setAlpha(0.5);
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0710, 0.65).setOrigin(0);
@@ -621,6 +658,9 @@ class EndingScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: [score, again], alpha: 1, duration: 800, delay: 500 + ENDING_LINES.length * 1100 });
 
-    this.input.keyboard.once("keydown-ENTER", () => this.scene.start("title"));
+    this.input.keyboard.once("keydown-ENTER", () => {
+      Sound.play("select");
+      this.scene.start("title");
+    });
   }
 }

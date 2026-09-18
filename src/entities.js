@@ -29,6 +29,9 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.dashReadyAt = 0;
     this.dead = false;
     this.onIce = false;
+    this.wasOnGround = true; // so spawning does not fire a landing thud
+    this.fallSpeed = 0;
+    this.stepAccum = 0;
 
     this.on("animationcomplete", this.onAnimComplete, this);
     this.on("animationupdate", this.onAnimUpdate, this);
@@ -77,6 +80,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       this.state_ = "attack";
       this.attackHitDone = false;
       this.play("hero-airattack");
+      Sound.play("swing2", { x: this.x });
       return;
     }
 
@@ -84,6 +88,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.state_ = "attack";
     this.attackHitDone = false;
     this.play(`hero-attack${this.comboStep}`);
+    Sound.play(`swing${this.comboStep}`, { x: this.x });
     this.setVelocityX(this.facing * 60);
   }
 
@@ -97,6 +102,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.invulnUntil = Math.max(this.invulnUntil, now + 320);
     this.setVelocityX(this.facing * 620);
     this.play("hero-roll");
+    Sound.play("dash", { x: this.x });
   }
 
   hurt(amount, fromX) {
@@ -113,6 +119,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
       this.hp = 0;
       this.die();
     } else {
+      Sound.play("hurt", { x: this.x });
       this.state_ = "hurt";
       this.play("hero-hurt");
       this.scene.tweens.add({
@@ -129,6 +136,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.state_ = "dead";
     this.setVelocityX(0);
     this.play("hero-death");
+    Sound.play("death", { x: this.x });
     this.scene.onPlayerDeath();
   }
 
@@ -167,6 +175,28 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     if (input.jumpPressed && (onGround || now < this.coyoteUntil)) {
       this.setVelocityY(-760);
       this.coyoteUntil = 0;
+      Sound.play("jump", { x: this.x });
+    }
+
+    // Landing hits harder the faster you were falling.
+    if (!onGround) {
+      this.fallSpeed = Math.max(this.fallSpeed, this.body.velocity.y);
+    } else if (!this.wasOnGround) {
+      Sound.play("land", { x: this.x, force: Math.min(1, this.fallSpeed / 900) });
+      this.fallSpeed = 0;
+    }
+    this.wasOnGround = onGround;
+
+    // Footsteps are driven by distance covered, so they stay in step with the
+    // run whatever the frame rate, and they take their timbre from the ground.
+    if (onGround && Math.abs(this.body.velocity.x) > 40) {
+      this.stepAccum += Math.abs(this.body.velocity.x) * (this.scene.game.loop.delta / 1000);
+      if (this.stepAccum > 62) {
+        this.stepAccum = 0;
+        Sound.play("step", { x: this.x, surface: this.scene.theme });
+      }
+    } else {
+      this.stepAccum = 40; // next move starts with a step almost immediately
     }
     // Variable jump height: releasing early cuts the rise short.
     if (!input.jumpHeld && this.body.velocity.y < -450) this.setVelocityY(-450);
@@ -221,6 +251,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.hp -= amount;
     const dir = this.x < fromX ? -1 : 1;
     this.setVelocityX(dir * 200);
+    Sound.play("hit", { x: this.x });
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(70, () => this.active && this.clearTint());
     if (this.hp <= 0) this.kill();
@@ -230,6 +261,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (!this.alive_) return;
     this.alive_ = false;
     this.body.enable = false;
+    Sound.play("enemyDie", { x: this.x });
     this.scene.onEnemyKilled(this);
     this.scene.tweens.add({
       targets: this, alpha: 0, scaleX: 0.5, scaleY: 0.5, angle: 140,
@@ -291,6 +323,7 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
   takeDamage(amount, fromX) {
     if (!this.alive_) return;
     this.hp = Math.max(0, this.hp - amount);
+    Sound.play("bossHit", { x: this.x });
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(70, () => this.active && this.clearTint());
     this.scene.cameras.main.shake(120, 0.006);
@@ -303,10 +336,12 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
     this.alive_ = false;
     this.body.enable = false;
     this.play("dragon-hurt");
+    Sound.play("bossDie", { x: this.x });
     this.scene.onBossDefeated();
   }
 
   breathe() {
+    Sound.play("fire", { x: this.x });
     const dirToPlayer = this.scene.player.x < this.x ? -1 : 1;
     this.setFlipX(dirToPlayer > 0);
     for (let i = -1; i <= 1; i++) {
@@ -334,6 +369,7 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
         this.nextPhaseAt = time + 1600 / rush;
         this.swoopDir = player.x < this.x ? -1 : 1;
         this.play("dragon-attack");
+        Sound.play("roar", { x: this.x });
       } else if (this.phase === "swoop") {
         this.phase = "rest";
         this.nextPhaseAt = time + 2600 / rush;
