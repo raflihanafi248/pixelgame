@@ -8,7 +8,9 @@ Kamu berperan sebagai **Penjaga Hutan**, ksatria bersenjata pedang dan perisai y
 
 ## Cara menjalankan
 
-Butuh server statis karena game memuat aset lewat `fetch` (tidak bisa dibuka langsung sebagai file lokal).
+Cukup buka `index.html` langsung di browser (double-click filenya) — semua aset gambar sudah disematkan sebagai data URI di `src/assets_data.js` jadi tidak butuh server.
+
+Kalau lebih suka lewat server lokal, juga bisa:
 
 ```bash
 npm start
@@ -28,5 +30,14 @@ Lalu buka `http://localhost:8080` di browser.
 
 - `index.html`, `src/main.js` — kode game (Phaser.js)
 - `vendor/phaser.min.js` — library Phaser (di-bundle lokal)
-- `assets/` — aset pixel art (background, karakter, musuh, dekorasi)
-- `tools/generate_assets.py` — skrip Python (Pillow) yang men-generate semua aset pixel art di atas secara prosedural. Jalankan `python3 tools/generate_assets.py` untuk membuat ulang aset jika ingin diubah.
+- `assets/` — file PNG aset pixel art mentah (background, karakter, musuh, dekorasi), untuk diedit/dilihat
+- `src/assets_data.js` — versi base64 dari isi `assets/`, yang benar-benar dipakai game (auto-generated, jangan edit manual)
+- `tools/generate_assets.py` — skrip Python (Pillow) yang men-generate semua PNG pixel art di atas secara prosedural
+- `tools/embed_assets.py` — mengonversi isi `assets/` menjadi `src/assets_data.js`
+
+Kalau mengubah tampilan aset, jalankan keduanya berurutan:
+
+```bash
+python3 tools/generate_assets.py
+python3 tools/embed_assets.py
+```

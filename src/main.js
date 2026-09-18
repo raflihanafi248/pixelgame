@@ -10,26 +10,30 @@ class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("sky", "assets/bg_sky.png");
-    this.load.image("trees_far", "assets/bg_trees_far.png");
-    this.load.image("trees_near", "assets/bg_trees_near.png");
-    this.load.image("ground", "assets/ground.png");
-    this.load.image("fence", "assets/fence.png");
-    this.load.image("lantern", "assets/lantern.png");
-    this.load.image("gate", "assets/gate.png");
-    this.load.spritesheet("hero", "assets/hero.png", {
+    // Assets are loaded from embedded base64 data URIs (src/assets_data.js)
+    // rather than plain file paths, so the game also works when index.html
+    // is opened directly (file://), where browsers block the XHR requests
+    // Phaser's loader would otherwise make to fetch plain image files.
+    this.load.image("sky", ASSET_DATA.sky);
+    this.load.image("trees_far", ASSET_DATA.trees_far);
+    this.load.image("trees_near", ASSET_DATA.trees_near);
+    this.load.image("ground", ASSET_DATA.ground);
+    this.load.image("fence", ASSET_DATA.fence);
+    this.load.image("lantern", ASSET_DATA.lantern);
+    this.load.image("gate", ASSET_DATA.gate);
+    this.load.spritesheet("hero", ASSET_DATA.hero, {
       frameWidth: 64,
       frameHeight: 96,
     });
-    this.load.spritesheet("goblin", "assets/goblin.png", {
+    this.load.spritesheet("goblin", ASSET_DATA.goblin, {
       frameWidth: 56,
       frameHeight: 72,
     });
-    this.load.spritesheet("wolf", "assets/wolf.png", {
+    this.load.spritesheet("wolf", ASSET_DATA.wolf, {
       frameWidth: 88,
       frameHeight: 52,
     });
-    this.load.spritesheet("slime", "assets/slime.png", {
+    this.load.spritesheet("slime", ASSET_DATA.slime, {
       frameWidth: 56,
       frameHeight: 44,
     });
