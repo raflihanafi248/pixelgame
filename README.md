@@ -61,6 +61,10 @@ Semua suara disintesis langsung lewat Web Audio API — tidak ada satu pun file 
 - **Kristal** — dikumpulkan sepanjang perjalanan sebagai skor; mengalahkan musuh juga menambah skor.
 - **Jurang** — jatuh berarti kehilangan satu nyawa.
 
+## Kode rahasia
+
+Ketik **`123456789`** kapan saja saat bermain untuk menyalakan **Mode Kebal** — darah tidak akan berkurang oleh serangan apa pun, dan jatuh ke jurang hanya mengangkatmu kembali ke tempat aman. Ketik ulang kodenya untuk mematikannya. Saat aktif, ada tulisan `MODE KEBAL` di HUD.
+
 ## Struktur proyek
 
 ```

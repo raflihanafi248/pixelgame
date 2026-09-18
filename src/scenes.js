@@ -5,11 +5,35 @@ const GameState = {
   score: 0,
   lives: 3,
   checkpointX: null, // survives the scene restart that follows a death
+  godMode: false,    // cheat: set by typing the code below, survives restarts
   reset() {
     this.levelIndex = 0;
     this.score = 0;
     this.lives = 3;
     this.checkpointX = null;
+  },
+};
+
+// Cheat code: type 123456789 anywhere to toggle invincibility. The listener
+// lives on the window rather than a scene so it answers on every screen, and
+// it keeps a rolling buffer so the digits only have to arrive in order.
+const CHEAT_CODE = "123456789";
+const Cheats = {
+  buffer: "",
+  installed: false,
+  install(game) {
+    if (this.installed) return;
+    this.installed = true;
+    window.addEventListener("keydown", (e) => {
+      if (!/^[0-9]$/.test(e.key)) return;
+      this.buffer = (this.buffer + e.key).slice(-CHEAT_CODE.length);
+      if (this.buffer !== CHEAT_CODE) return;
+      this.buffer = "";
+      GameState.godMode = !GameState.godMode;
+      Sound.play(GameState.godMode ? "checkpoint" : "select");
+      const scene = game.scene.getScene("game");
+      if (scene && game.scene.isActive("game")) scene.showCheatToast();
+    });
   },
 };
 
@@ -59,6 +83,7 @@ class BootScene extends Phaser.Scene {
     // Browsers keep audio suspended until the player interacts, so hook
     // both key and pointer input and resume from there.
     Sound.init();
+    Cheats.install(this.game);
     const wake = () => Sound.resume();
     this.input.keyboard.on("keydown", wake);
     this.input.on("pointerdown", wake);
@@ -390,6 +415,10 @@ class GameScene extends Phaser.Scene {
     this.scoreText = this.add.text(GAME_W - 24, 24, "", {
       fontFamily: FONT, fontSize: "18px", color: "#ffe6b3",
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
+    this.godText = this.add.text(GAME_W / 2, 48, "MODE KEBAL", {
+      fontFamily: FONT, fontSize: "14px", color: "#ffe066",
+      backgroundColor: "#00000066", padding: { x: 8, y: 3 },
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(61).setVisible(GameState.godMode);
     this.add.text(GAME_W - 24, 50, "M: suara", {
       fontFamily: FONT, fontSize: "12px", color: "#8d8275",
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
@@ -411,6 +440,7 @@ class GameScene extends Phaser.Scene {
   }
 
   refreshHud() {
+    this.godText?.setVisible(GameState.godMode);
     this.hearts.forEach((h, i) => h.setFrame(i < this.player.hp ? 0 : 1));
     this.armorPips.forEach((p, i) => p.setFrame(i < this.player.armor ? 0 : 1));
     this.livesText.setText(`NYAWA x${GameState.lives}`);
@@ -507,6 +537,21 @@ class GameScene extends Phaser.Scene {
     this.refreshHud();
   }
 
+  showCheatToast() {
+    const on = GameState.godMode;
+    const msg = this.add.text(GAME_W / 2, GAME_H / 2 - 60,
+      on ? "MODE KEBAL AKTIF" : "MODE KEBAL MATI", {
+        fontFamily: FONT, fontSize: "26px",
+        color: on ? "#ffe066" : "#c9bcae",
+        stroke: "#241a10", strokeThickness: 6,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+    this.tweens.add({
+      targets: msg, y: GAME_H / 2 - 110, alpha: 0, duration: 1400,
+      onComplete: () => msg.destroy(),
+    });
+    this.refreshHud();
+  }
+
   onArmorChanged(what) {
     this.refreshHud();
     if (what === "broken") {
@@ -593,10 +638,16 @@ class GameScene extends Phaser.Scene {
       }
     });
 
-    // pits are lethal
+    // Pits are lethal - unless the cheat is on, in which case the player is
+    // simply lifted back to the last safe spot with health untouched.
     if (!this.player.dead && this.player.y > GAME_H + 120) {
-      this.player.hp = 0;
-      this.player.die();
+      if (GameState.godMode) {
+        this.player.setVelocity(0, 0);
+        this.player.setPosition(this.spawnX, GROUND_Y - 140);
+      } else {
+        this.player.hp = 0;
+        this.player.die();
+      }
     }
 
     if (this.shieldFx) {

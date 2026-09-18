@@ -118,6 +118,16 @@ class Player extends Phaser.Physics.Arcade.Sprite {
   hurt(amount, fromX) {
     const now = this.scene.time.now;
     if (this.dead || now < this.invulnUntil) return false;
+
+    // Cheat: the hit still registers visually, but nothing is taken from you.
+    if (GameState.godMode) {
+      this.invulnUntil = now + 240;
+      Sound.play("clang", { x: this.x });
+      this.setTintFill(0xffe066);
+      this.scene.time.delayedCall(90, () => this.active && this.clearTint());
+      return false;
+    }
+
     this.queuedAttack = false;
     const dir = this.x < fromX ? -1 : 1;
 
