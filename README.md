@@ -1,95 +1,95 @@
-# Pixel Forest Adventure
+# The Last Knight
 
-Game aksi-platformer pixel 2D dengan 5 level, dibuat dengan [Phaser.js](https://phaser.io/).
+A 2D pixel-art action platformer in five levels, built with [Phaser.js](https://phaser.io/).
 
-## Cerita
+## Story
 
-Kamu adalah **Sang Penjaga Hutan**. Dedaunan gugur sebelum waktunya, lentera-lentera penjaga padam sendiri, dan sesuatu yang sangat tua sedang terbangun di jantung hutan.
+You are the last of the forest wardens. The leaves are falling too early, the warden's lanterns are going out on their own, and something very old is stirring at the heart of the wood.
 
-Jejaknya membawamu dari hutan musim gugur, menembus kabut malam, turun ke reruntuhan gua kristal, naik ke puncak yang membeku — sampai ke sarang **Naga Hutan** yang murka. Naga itu bukan monster tanpa alasan: ia mengenali lambang di perisaimu, dan ia menuntut janji yang pernah diingkari manusia.
+The trail leads you out of the autumn forest, through the mist of the nightwood, down into the ruins of a crystal cave, up to a freezing peak — and finally to the lair of the **Forest Dragon**. The dragon is no mindless monster: it recognises the crest on your shield, and it means to collect on an oath that men once broke.
 
-Akhir ceritanya sengaja dibiarkan terbuka.
+The ending is deliberately left open.
 
-## Cara menjalankan
+## Running it
 
-Cukup buka `index.html` di browser (klik dua kali) — semua aset gambar sudah disematkan sebagai data URI, jadi tidak butuh server.
+Just open `index.html` in a browser (double-click it) — every image is embedded as a data URI, so no server is needed.
 
-Kalau lebih suka lewat server lokal:
+If you would rather serve it:
 
 ```bash
-npm start          # atau: python3 -m http.server 8080
+npm start          # or: python3 -m http.server 8080
 ```
 
-Lalu buka `http://localhost:8080`.
+Then open `http://localhost:8080`.
 
-## Kontrol
+## Controls
 
-| Tombol | Aksi |
+| Key | Action |
 | --- | --- |
-| `A` / `D` atau `←` `→` | Bergerak |
-| `W` / `↑` / `SPASI` | Lompat (tahan untuk lompat lebih tinggi) |
-| `J` atau `X` | Serang — combo pedang 3 tahap, serangan udara saat melompat |
-| `SHIFT` atau `L` | Dash menghindar (kebal sesaat) |
-| `M` | Nyalakan / matikan suara |
-| `ENTER` | Lanjut di layar judul / cerita |
+| `A` / `D` or `←` `→` | Move |
+| `W` / `↑` / `SPACE` | Jump (hold for a higher jump) |
+| `J` or `X` | Attack — three-hit sword combo, air attack while jumping |
+| `SHIFT` or `L` | Dash (brief invulnerability) |
+| `M` | Sound on / off |
+| `ENTER` | Continue on the title and story screens |
 
-## Level
+## Levels
 
-1. **Hutan Musim Gugur** — perkenalan: goblin, slime, serigala.
-2. **Hutan Malam Berkabut** — gelap, jarak pandang terbatas, arwah mulai muncul.
-3. **Gua Kristal** — platforming bertingkat, kelelawar, duri.
-4. **Puncak Beku** — permukaan licin, serigala es.
-5. **Sarang Sang Naga** — pertarungan boss melawan naga merah bersayap membran: ia melayang sambil meraung dan menyemburkan api, menukik menyambar, lalu mendarat kelelahan — saat mendarat itulah celahmu menyerang.
+1. **The Autumn Wood** — a gentle opening: goblins, slimes, wolves.
+2. **The Misted Nightwood** — dark, barely any sight line, wraiths start to appear.
+3. **The Crystal Cave** — tiered platforming, bats, spikes.
+4. **The Frozen Peak** — slippery footing and ice wolves.
+5. **The Dragon's Lair** — a boss fight against a red, membrane-winged dragon: it hovers and breathes fire, dives at you, then lands exhausted — and that landing is your opening.
 
 ## Audio
 
-Semua suara disintesis langsung lewat Web Audio API — tidak ada satu pun file audio, jadi ukuran game tidak bertambah dan tetap jalan dari `file://`.
+Every sound is synthesised live through the Web Audio API — there is not a single audio file, so the game costs nothing extra to download and still runs from `file://`.
 
-- **Musik** bergaya sinematik per level: lapisan pad (saw yang di-detune lewat filter bergerak), sub bass, arpeggio, dan perkusi (taiko di sarang naga, tetesan air di gua).
-- **Efek suara berlapis** seperti praktik sound design sungguhan: transient (hentakan awal) + body (bagian bernada) + tail (ekor noise & reverb). Dentang logam dibuat dari partial inharmonis, raungan naga dari saw terdistorsi lewat filter formant.
-- **Reverb konvolusi** dengan impulse response yang dibuat sendiri per lingkungan — gua bergema 3,4 detik dan gelap, salju hanya 0,9 detik dan kering.
-- **Langkah kaki per permukaan** — daun kering, tanah lembap, batu, salju yang berderik, abu — dipicu berdasarkan jarak tempuh sehingga selalu selaras dengan animasi lari.
-- **Posisi stereo** mengikuti posisi objek di dunia: musuh di sebelah kiri terdengar dari kiri, dan makin jauh makin pelan serta makin teredam.
-- **Ambience** per level: angin menyapu dedaunan, jangkrik malam, tetesan air gua, badai salju, dentum rendah di sarang naga.
-- Setiap bunyi diacak sedikit nada dan volumenya agar tidak terdengar berulang identik.
+- **Music** is scored per level from pad layers (detuned saws through a moving filter), sub bass, an arpeggio and percussion (taiko in the lair, water drips in the cave).
+- **Layered sound effects**, built the way a sound designer builds one: transient, then body, then tail. Metal clangs come from inharmonic partials; the dragon's roar is a distorted saw stack pushed through vowel-like formant filters.
+- **Convolution reverb** with an impulse response generated per environment — the cave rings for 3.4 seconds and dark, snow is nearly dry at 0.9.
+- **Per-surface footsteps** — leaf litter, damp earth, stone, squeaking snow, ash — triggered by distance travelled so they always match the run.
+- **Stereo placement** from world position: an enemy to your left sounds to your left, and grows quieter and more muffled with distance.
+- **Ambience** per level: wind through leaves, night crickets, cave drips, a snow storm, a low drone in the lair.
+- Every sound is randomised slightly in pitch and level so repeats never sound identical.
 
-## Sistem
+## Systems
 
-- **HP & nyawa** — 5 hati, 3 nyawa, kebal sesaat setelah terkena serangan.
-- **Armor** — setiap kali mengalahkan musuh kamu mendapat armor berisi 3 lapis. Selama armor menyala (terlihat sebagai kubah energi di sekeliling karakter dan 3 ikon perisai di HUD), serangan musuh menghantam armor, bukan nyawamu. Setelah 3 serangan armor pecah, dan kalahkan musuh lagi untuk memakainya kembali. Jatuh ke jurang tetap mematikan — armor tidak menolong di sana.
-- **Checkpoint** — lentera batu di sepanjang level; mati akan mengembalikanmu ke checkpoint terakhir.
-- **Kristal** — dikumpulkan sepanjang perjalanan sebagai skor; mengalahkan musuh juga menambah skor.
-- **Jurang** — jatuh berarti kehilangan satu nyawa.
+- **Health and lives** — 5 hearts, 3 lives, brief invulnerability after a hit.
+- **Armour** — every enemy you defeat grants three plates of armour. While it holds (a shell around the knight, three shield pips in the HUD) hits land on the armour instead of your health. The third hit shatters it; defeat another enemy to earn it back. Pits stay lethal — armour will not save you there.
+- **Checkpoints** — stone lanterns along the way; dying returns you to the last one.
+- **Crystals** — collected for score along the route, and defeating enemies adds to it too.
+- **Pits** — falling costs a life.
 
-## Kode rahasia
+## Cheat code
 
-Ketik **`123456789`** kapan saja saat bermain untuk menyalakan **Mode Kebal** — darah tidak akan berkurang oleh serangan apa pun, dan jatuh ke jurang hanya mengangkatmu kembali ke tempat aman. Ketik ulang kodenya untuk mematikannya. Saat aktif, ada tulisan `MODE KEBAL` di HUD.
+Type **`123456789`** at any point during play to switch on **invincible mode** — nothing takes health off you, and falling into a pit just lifts you back to safety. Type it again to switch it off. An `INVINCIBLE` badge shows in the HUD while it is on.
 
-## Struktur proyek
+## Project layout
 
 ```
-index.html           halaman game
-src/levels.js        data 5 level + teks cerita
-src/audio.js         mesin audio (musik, efek, ambience, reverb)
-src/entities.js      Player (combo, dash, HP), Enemy, Dragon (boss)
-src/scenes.js        boot, judul, kartu cerita, gameplay, game over, ending
-src/main.js          konfigurasi Phaser
-src/assets_data.js   semua aset dalam base64 (auto-generated, jangan diedit manual)
-assets/              file PNG mentah
-vendor/phaser.min.js library Phaser (di-bundle lokal)
-tools/               skrip pembuat & pengemas aset
+index.html           the game page
+src/levels.js        the five levels and their story text
+src/audio.js         audio engine (music, effects, ambience, reverb)
+src/entities.js      Player (combo, dash, health), Enemy, Dragon (boss)
+src/scenes.js        boot, title, story cards, gameplay, game over, ending
+src/main.js          Phaser configuration
+src/assets_data.js   every asset as base64 (generated - do not hand-edit)
+assets/              the raw PNGs
+vendor/phaser.min.js Phaser, bundled locally
+tools/               asset generation and packing scripts
 ```
 
-### Membuat ulang aset
+### Regenerating the assets
 
 ```bash
-python3 tools/generate_assets.py                 # background, musuh, item, boss (Pillow)
-python3 tools/pack_hero.py <folder-sprite-pack>  # sprite sheet karakter utama
-python3 tools/embed_assets.py                    # kemas semua PNG jadi src/assets_data.js
+python3 tools/generate_assets.py                 # backgrounds, enemies, items, boss (Pillow)
+python3 tools/pack_hero.py <sprite-pack-folder>  # the main character's sheet
+python3 tools/embed_assets.py                    # pack every PNG into src/assets_data.js
 ```
 
-`generate_assets.py` menggambar semua aset secara prosedural per tema level (autumn, night, cave, snow, lair), jadi mengubah palet satu tema cukup mengubah satu entri di dict `THEMES`.
+`generate_assets.py` draws everything procedurally per level theme (autumn, night, cave, snow, lair), so recolouring a whole level means editing one entry in the `THEMES` dict.
 
-## Kredit aset
+## Asset credits
 
-Sprite karakter utama: **2D SL Knight v1.0** — lisensinya mengizinkan penggunaan dan modifikasi, termasuk untuk keperluan komersial, dan melarang menjual ulang asetnya. Aset lain (background, musuh, boss, item, UI) dibuat sendiri lewat `tools/generate_assets.py`.
+The main character uses the **2D SL Knight v1.0** sprite pack — its licence permits editing and commercial use, and forbids reselling the asset itself. Everything else (backgrounds, enemies, the boss, items, UI) is generated by `tools/generate_assets.py`.

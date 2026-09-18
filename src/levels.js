@@ -1,4 +1,4 @@
-// Level definitions and story text for Pixel Forest Adventure.
+// Level definitions and story text for The Last Knight.
 
 const GAME_W = 960;
 const GAME_H = 540;
@@ -35,14 +35,14 @@ function row(x, y, count, step = 52) {
 const LEVELS = [
   {
     key: "forest",
-    name: "Hutan Musim Gugur",
+    name: "The Autumn Wood",
     theme: "autumn",
     width: 5400,
     goalX: 5200,
     story: [
-      "Dedaunan gugur jauh lebih cepat dari musim mana pun.",
-      "Lentera-lentera penjaga padam satu per satu, tanpa angin.",
-      "Sesuatu yang besar sedang terbangun di jantung hutan.",
+      "The leaves are falling far too early this year.",
+      "One by one the warden's lanterns go out. There is no wind.",
+      "Something old is waking at the heart of the forest.",
     ],
     gaps: [[1632, 192], [3104, 192]],
     platforms: [
@@ -66,15 +66,15 @@ const LEVELS = [
   },
   {
     key: "nightwood",
-    name: "Hutan Malam Berkabut",
+    name: "The Misted Nightwood",
     theme: "night",
     width: 5800,
     goalX: 5600,
     dark: 340, // radius of the lantern light; presence of this enables darkness
     story: [
-      "Malam turun lebih cepat dari seharusnya.",
-      "Kabut membawa bisikan — dan itu bukan bahasa manusia.",
-      "Cahayamu tinggal sejengkal. Jangan biarkan padam.",
+      "Night falls sooner than it has any right to.",
+      "The mist carries whispers, and none of them are human.",
+      "Your light reaches barely an arm's length. Do not let it die.",
     ],
     gaps: [[1408, 192], [2752, 192], [4288, 192]],
     platforms: [
@@ -98,15 +98,15 @@ const LEVELS = [
   },
   {
     key: "crystalcave",
-    name: "Gua Kristal",
+    name: "The Crystal Cave",
     theme: "cave",
     width: 6000,
     goalX: 5800,
     dark: 400,
     story: [
-      "Di bawah akar-akar tua, ada reruntuhan yang lebih tua lagi.",
-      "Relief di dindingnya: seekor naga, dan manusia yang mengingkarinya.",
-      "Kristal-kristal itu berdenyut, seperti detak jantung yang marah.",
+      "Beneath the old roots lie ruins older still.",
+      "Carved on the walls: a dragon, and the men who broke their word.",
+      "The crystals pulse like an angry heartbeat.",
     ],
     gaps: [[1216, 192], [2176, 192], [3392, 192], [4608, 192]],
     platforms: [
@@ -134,15 +134,15 @@ const LEVELS = [
   },
   {
     key: "frozenpeak",
-    name: "Puncak Beku",
+    name: "The Frozen Peak",
     theme: "snow",
     width: 5800,
     goalX: 5600,
     ice: true, // slippery ground
     story: [
-      "Jantung hutan membeku, dan ini bukan ulah musim dingin.",
-      "Yang kau rasakan di udara bukan amarah. Itu luka.",
-      "Di atas sana, ada sayap yang tak pernah benar-benar tidur.",
+      "The heart of the forest is freezing, and winter is not to blame.",
+      "What hangs in the air is not rage. It is a wound.",
+      "Somewhere above, wings that have never truly slept.",
     ],
     gaps: [[1472, 192], [2880, 192], [4224, 192]],
     platforms: [
@@ -167,15 +167,15 @@ const LEVELS = [
   },
   {
     key: "lair",
-    name: "Sarang Sang Naga",
+    name: "The Dragon's Lair",
     theme: "lair",
     width: 2100,
     goalX: null, // the gate only appears once the dragon falls
     boss: "dragon",
     story: [
-      "Naga itu menatapmu, dan mengenali lambang di perisaimu.",
-      '"Kalian berjanji menjaga," desisnya. "Kalian ingkar."',
-      "Tidak ada lagi kata yang tersisa di antara kalian. Hanya api.",
+      "The dragon looks at you, and knows the crest on your shield.",
+      '"You swore to keep this place," it hisses. "You broke that oath."',
+      "There is nothing left to say between you. Only fire.",
     ],
     gaps: [],
     platforms: [{ x: 620, y: LOW }, { x: 1480, y: LOW }],
@@ -187,8 +187,8 @@ const LEVELS = [
 ];
 
 const ENDING_LINES = [
-  "Naga itu jatuh berlutut, lalu larut menjadi kabut keemasan.",
-  "Dedaunan bersemi kembali — tapi hanya sejauh tempat kau berdiri.",
-  "Jauh di bawah reruntuhan, sesuatu yang lain membuka matanya.",
-  "Sang Penjaga menyarungkan pedang. Perjalanannya belum selesai.",
+  "The dragon falls to its knees, then unravels into golden mist.",
+  "Leaves bud again - but only as far as where you stand.",
+  "Far beneath the ruins, something else opens its eyes.",
+  "The knight sheathes his sword. The road is not finished.",
 ];

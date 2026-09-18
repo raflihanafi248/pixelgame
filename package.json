@@ -1,7 +1,7 @@
 {
-  "name": "pixelgame",
+  "name": "the-last-knight",
   "version": "1.0.0",
-  "description": "Pixel Forest Adventure - a 2D pixel-art side-scroller built with Phaser.js",
+  "description": "The Last Knight - a 2D pixel-art action platformer built with Phaser.js",
   "main": "index.html",
   "scripts": {
     "start": "python3 -m http.server 8080"

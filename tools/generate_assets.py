@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates every pixel-art asset for Pixel Forest Adventure.
+"""Generates every pixel-art asset for The Last Knight.
 
 Everything is drawn on a low-res integer grid and upscaled with
 nearest-neighbour (SCALE=2), so pixels stay small and dense while the

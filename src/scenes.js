@@ -139,23 +139,23 @@ class TitleScene extends Phaser.Scene {
     const knight = this.add.sprite(GAME_W / 2, 456, "hero").setScale(HERO_SCALE);
     knight.play("hero-idle");
 
-    this.add.text(GAME_W / 2, 86, "PIXEL FOREST", {
-      fontFamily: FONT, fontSize: "58px", color: "#ffd9a0", stroke: "#2a1410", strokeThickness: 8,
+    this.add.text(GAME_W / 2, 86, "THE LAST KNIGHT", {
+      fontFamily: FONT, fontSize: "50px", color: "#ffd9a0", stroke: "#2a1410", strokeThickness: 8,
     }).setOrigin(0.5);
-    this.add.text(GAME_W / 2, 142, "A D V E N T U R E", {
+    this.add.text(GAME_W / 2, 142, "A Pixel Forest Adventure", {
       fontFamily: FONT, fontSize: "26px", color: "#f0e6d2", stroke: "#2a1410", strokeThickness: 5,
     }).setOrigin(0.5);
-    this.add.text(GAME_W / 2, 184, "Kisah Sang Penjaga Hutan & Naga yang Murka", {
+    this.add.text(GAME_W / 2, 184, "The forest guardian, and the wrath of the dragon", {
       fontFamily: FONT, fontSize: "15px", color: "#c9b8a8",
     }).setOrigin(0.5);
 
-    const prompt = this.add.text(GAME_W / 2, 240, "Tekan  ENTER  untuk memulai", {
+    const prompt = this.add.text(GAME_W / 2, 240, "Press  ENTER  to begin", {
       fontFamily: FONT, fontSize: "22px", color: "#ffe6b3",
     }).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
-      "A / D  atau  ←  →   bergerak\nW / ↑ / SPASI   lompat\nJ   serang (combo 3x)\nSHIFT   dash menghindar\nM   nyalakan / matikan suara\n\nKalahkan musuh untuk mendapat ARMOR — menahan 3 serangan",
+      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)\nSHIFT   dash\nM   sound on / off\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits",
       { fontFamily: FONT, fontSize: "14px", color: "#c4b3a0", align: "center", lineSpacing: 6 }
     ).setOrigin(0.5);
 
@@ -180,7 +180,7 @@ class StoryScene extends Phaser.Scene {
     const level = LEVELS[GameState.levelIndex];
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x080610).setOrigin(0);
 
-    this.add.text(GAME_W / 2, 120, `BAB ${GameState.levelIndex + 1}`, {
+    this.add.text(GAME_W / 2, 120, `CHAPTER ${GameState.levelIndex + 1}`, {
       fontFamily: FONT, fontSize: "18px", color: "#8c7f9c", letterSpacing: 4,
     }).setOrigin(0.5);
     this.add.text(GAME_W / 2, 164, level.name, {
@@ -195,7 +195,7 @@ class StoryScene extends Phaser.Scene {
       this.tweens.add({ targets: t, alpha: 1, duration: 600, delay: 400 + i * 700 });
     });
 
-    const go = this.add.text(GAME_W / 2, 450, "ENTER  untuk lanjut", {
+    const go = this.add.text(GAME_W / 2, 450, "ENTER  to continue", {
       fontFamily: FONT, fontSize: "18px", color: "#ffe6b3",
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: go, alpha: 1, duration: 500, delay: 400 + level.story.length * 700 });
@@ -415,15 +415,15 @@ class GameScene extends Phaser.Scene {
     this.scoreText = this.add.text(GAME_W - 24, 24, "", {
       fontFamily: FONT, fontSize: "18px", color: "#ffe6b3",
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
-    this.godText = this.add.text(GAME_W / 2, 48, "MODE KEBAL", {
+    this.godText = this.add.text(GAME_W / 2, 48, "INVINCIBLE", {
       fontFamily: FONT, fontSize: "14px", color: "#ffe066",
       backgroundColor: "#00000066", padding: { x: 8, y: 3 },
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(61).setVisible(GameState.godMode);
-    this.add.text(GAME_W - 24, 50, "M: suara", {
+    this.add.text(GAME_W - 24, 50, "M: sound", {
       fontFamily: FONT, fontSize: "12px", color: "#8d8275",
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
     this.levelText = this.add.text(GAME_W / 2, 24,
-      `BAB ${GameState.levelIndex + 1} — ${this.level.name}`, {
+      `CHAPTER ${GameState.levelIndex + 1} — ${this.level.name}`, {
         fontFamily: FONT, fontSize: "15px", color: "#cdbfae",
       }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(60);
 
@@ -432,7 +432,7 @@ class GameScene extends Phaser.Scene {
         .setScrollFactor(0).setDepth(60).setStrokeStyle(2, 0x7a5a4a);
       this.bossBar = this.add.rectangle(GAME_W / 2 - 258, GAME_H - 34, 516, 14, 0xc3452f)
         .setOrigin(0, 0.5).setScrollFactor(0).setDepth(61);
-      this.add.text(GAME_W / 2, GAME_H - 56, "NAGA HUTAN", {
+      this.add.text(GAME_W / 2, GAME_H - 56, "FOREST DRAGON", {
         fontFamily: FONT, fontSize: "14px", color: "#ffb9a0",
       }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
     }
@@ -443,8 +443,8 @@ class GameScene extends Phaser.Scene {
     this.godText?.setVisible(GameState.godMode);
     this.hearts.forEach((h, i) => h.setFrame(i < this.player.hp ? 0 : 1));
     this.armorPips.forEach((p, i) => p.setFrame(i < this.player.armor ? 0 : 1));
-    this.livesText.setText(`NYAWA x${GameState.lives}`);
-    this.scoreText.setText(`KRISTAL  ${GameState.score}`);
+    this.livesText.setText(`LIVES x${GameState.lives}`);
+    this.scoreText.setText(`CRYSTALS  ${GameState.score}`);
   }
 
   updateBossBar() {
@@ -483,7 +483,7 @@ class GameScene extends Phaser.Scene {
     Sound.play("checkpoint", { x: cp.x });
     this.spawnX = cp.x;
     GameState.checkpointX = cp.x;
-    const msg = this.add.text(cp.x, GROUND_Y - 130, "Titik aman", {
+    const msg = this.add.text(cp.x, GROUND_Y - 130, "Checkpoint", {
       fontFamily: FONT, fontSize: "14px", color: "#ffd98a",
     }).setOrigin(0.5).setDepth(40);
     this.tweens.add({ targets: msg, y: GROUND_Y - 170, alpha: 0, duration: 1100, onComplete: () => msg.destroy() });
@@ -540,7 +540,7 @@ class GameScene extends Phaser.Scene {
   showCheatToast() {
     const on = GameState.godMode;
     const msg = this.add.text(GAME_W / 2, GAME_H / 2 - 60,
-      on ? "MODE KEBAL AKTIF" : "MODE KEBAL MATI", {
+      on ? "INVINCIBLE MODE ON" : "INVINCIBLE MODE OFF", {
         fontFamily: FONT, fontSize: "26px",
         color: on ? "#ffe066" : "#c9bcae",
         stroke: "#241a10", strokeThickness: 6,
@@ -696,17 +696,17 @@ class GameOverScene extends Phaser.Scene {
     Sound.stopAmbience();
     Sound.play("gameOver");
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0508).setOrigin(0);
-    this.add.text(GAME_W / 2, 190, "KEGELAPAN MENANG", {
+    this.add.text(GAME_W / 2, 190, "THE DARK HAS WON", {
       fontFamily: FONT, fontSize: "40px", color: "#e0564a",
     }).setOrigin(0.5);
-    this.add.text(GAME_W / 2, 250, "Hutan menelan langkahmu yang terakhir.", {
+    this.add.text(GAME_W / 2, 250, "The forest swallowed your last step.", {
       fontFamily: FONT, fontSize: "17px", color: "#cbbcae",
     }).setOrigin(0.5);
-    this.add.text(GAME_W / 2, 310, `Kristal terkumpul: ${GameState.score}`, {
+    this.add.text(GAME_W / 2, 310, `Crystals gathered: ${GameState.score}`, {
       fontFamily: FONT, fontSize: "18px", color: "#8fd9e8",
     }).setOrigin(0.5);
 
-    const p = this.add.text(GAME_W / 2, 390, "ENTER  untuk mencoba lagi", {
+    const p = this.add.text(GAME_W / 2, 390, "ENTER  to try again", {
       fontFamily: FONT, fontSize: "19px", color: "#ffe6b3",
     }).setOrigin(0.5);
     this.tweens.add({ targets: p, alpha: 0.3, duration: 700, yoyo: true, repeat: -1 });
@@ -732,7 +732,7 @@ class EndingScene extends Phaser.Scene {
     this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "near_autumn").setOrigin(0).setAlpha(0.5);
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0710, 0.65).setOrigin(0);
 
-    this.add.text(GAME_W / 2, 90, "HUTAN MENARIK NAPASNYA KEMBALI", {
+    this.add.text(GAME_W / 2, 90, "THE FOREST DRAWS BREATH AGAIN", {
       fontFamily: FONT, fontSize: "26px", color: "#ffd9a0",
     }).setOrigin(0.5);
 
@@ -749,10 +749,10 @@ class EndingScene extends Phaser.Scene {
     knight.play("hero-idle");
     this.tweens.add({ targets: knight, alpha: 1, duration: 1200, delay: 1200 });
 
-    const score = this.add.text(GAME_W / 2, 390, `Kristal terkumpul: ${GameState.score}`, {
+    const score = this.add.text(GAME_W / 2, 390, `Crystals gathered: ${GameState.score}`, {
       fontFamily: FONT, fontSize: "18px", color: "#8fd9e8",
     }).setOrigin(0.5).setAlpha(0);
-    const again = this.add.text(GAME_W / 2, 430, "ENTER  untuk kembali ke judul", {
+    const again = this.add.text(GAME_W / 2, 430, "ENTER  to return to the title", {
       fontFamily: FONT, fontSize: "17px", color: "#ffe6b3",
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: [score, again], alpha: 1, duration: 800, delay: 500 + ENDING_LINES.length * 1100 });
