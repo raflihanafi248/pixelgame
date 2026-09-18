@@ -12,7 +12,7 @@ The ending is deliberately left open.
 
 ## Running it
 
-Just open `index.html` in a browser (double-click it) — every image is embedded as a data URI, so no server is needed.
+Just open `index.html` in a browser (double-click it) — every image is embedded as a data URI, so no server is needed. The view scales to fill the window, and `F` toggles fullscreen.
 
 If you would rather serve it:
 
@@ -32,6 +32,7 @@ Then open `http://localhost:8080`.
 | `SHIFT` or `L` | Dash (brief invulnerability) |
 | `E` | Talk to the person you are standing next to |
 | `M` | Sound on / off |
+| `F` | Fullscreen on / off |
 | `ENTER` | Continue on the title and story screens |
 
 ## Levels

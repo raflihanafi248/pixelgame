@@ -37,6 +37,27 @@ const Cheats = {
   },
 };
 
+// Global hotkeys. These live on the window for the same reason the cheat does:
+// a listener registered on a scene dies when that scene shuts down, which is
+// what silently broke the mute key.
+const Hotkeys = {
+  installed: false,
+  install(game) {
+    if (this.installed) return;
+    this.installed = true;
+    window.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      if (key === "m") {
+        Sound.toggleMute();
+      } else if (key === "f") {
+        // Must run inside the gesture, so toggle straight from the handler.
+        if (game.scale.isFullscreen) game.scale.stopFullscreen();
+        else game.scale.startFullscreen();
+      }
+    });
+  },
+};
+
 const FONT = "monospace";
 const THEME_TINT = {
   valley: 0xffc27a, night: 0x93a6ff, cave: 0xb79bff, snow: 0xffffff, lair: 0xff8a6a,
@@ -93,10 +114,10 @@ class BootScene extends Phaser.Scene {
     // both key and pointer input and resume from there.
     Sound.init();
     Cheats.install(this.game);
+    Hotkeys.install(this.game);
     const wake = () => Sound.resume();
     this.input.keyboard.on("keydown", wake);
     this.input.on("pointerdown", wake);
-    this.input.keyboard.on("keydown-M", () => Sound.toggleMute());
 
     const A = this.anims;
     const hero = (key, start, end, frameRate, repeat = 0) =>
@@ -174,7 +195,7 @@ class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
-      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)      SHIFT   dash\nE   talk to people            M   sound on / off\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits",
+      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)      SHIFT   dash\nE   talk to people            M   sound on / off\nF   fullscreen\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits",
       { fontFamily: FONT, fontSize: "14px", color: "#dccab4", align: "center",
         lineSpacing: 6, stroke: "#1c1108", strokeThickness: 3 }
     ).setOrigin(0.5);
@@ -476,7 +497,7 @@ class GameScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: "14px", color: "#ffe066",
       backgroundColor: "#00000066", padding: { x: 8, y: 3 },
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(61).setVisible(GameState.godMode);
-    this.add.text(GAME_W - 24, 50, "M: sound", {
+    this.add.text(GAME_W - 24, 50, "F: fullscreen   M: sound", {
       fontFamily: FONT, fontSize: "12px", color: "#8d8275",
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(60);
     this.levelText = this.add.text(GAME_W / 2, 24,
