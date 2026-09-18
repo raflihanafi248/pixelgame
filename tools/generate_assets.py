@@ -814,6 +814,186 @@ def gen_shield_bubble():
         d.ellipse([nx - 2, ny - 2, nx + 2, ny + 2], fill=(226, 246, 255, 150))
     save(img, "shield.png")
 
+# ==================================================================== NPCs
+# Every NPC is drawn from one parameterised figure, so a new character is a
+# palette plus a prop rather than a new drawing routine. Each also gets a
+# portrait for the dialogue box - that is what sells a story-mode conversation.
+N_W, N_H = 32, 40
+P_W, P_H = 48, 48
+
+NPCS = {
+    "maren": {   # the old warden who sends you out
+        "skin": (228, 188, 152), "skin_sh": (196, 152, 118),
+        "hair": (222, 222, 228), "hair_sh": (176, 176, 186),
+        "cloth": (58, 92, 70), "cloth_hi": (82, 122, 92), "cloth_sh": (38, 62, 48),
+        "trim": (206, 168, 74), "prop": "staff", "hood": False,
+    },
+    "bram": {    # woodcutter, chapter 1
+        "skin": (220, 172, 132), "skin_sh": (188, 140, 102),
+        "hair": (96, 60, 34), "hair_sh": (68, 42, 24),
+        "cloth": (122, 82, 48), "cloth_hi": (152, 108, 66), "cloth_sh": (86, 56, 32),
+        "trim": (168, 150, 120), "prop": "axe", "hood": False,
+    },
+    "gethin": {  # archivist in the crystal cave
+        "skin": (202, 164, 128), "skin_sh": (168, 132, 100),
+        "hair": (140, 136, 150), "hair_sh": (104, 100, 116),
+        "cloth": (74, 66, 102), "cloth_hi": (100, 92, 136), "cloth_sh": (50, 44, 72),
+        "trim": (190, 176, 220), "prop": "scroll", "hood": True,
+    },
+    "yvane": {   # a warden freezing on the peak
+        "skin": (218, 192, 172), "skin_sh": (184, 156, 138),
+        "hair": (236, 232, 222), "hair_sh": (196, 192, 186),
+        "cloth": (146, 178, 206), "cloth_hi": (186, 212, 234), "cloth_sh": (104, 132, 160),
+        "trim": (232, 244, 255), "prop": "none", "hood": True,
+    },
+}
+
+def npc_frame(pal, bob=0, arm=0):
+    img = canvas(N_W, N_H)
+    d = ImageDraw.Draw(img)
+    cx = N_W // 2
+    y = bob
+
+    # cloak / robe
+    d.polygon([(cx - 8, 16 + y), (cx + 8, 16 + y), (cx + 10, 38), (cx - 10, 38)], fill=pal["cloth"])
+    d.polygon([(cx - 8, 16 + y), (cx - 2, 16 + y), (cx - 3, 38), (cx - 10, 38)], fill=pal["cloth_hi"])
+    d.polygon([(cx + 3, 16 + y), (cx + 8, 16 + y), (cx + 10, 38), (cx + 4, 38)], fill=pal["cloth_sh"])
+    d.line([(cx - 9, 37), (cx + 9, 37)], fill=pal["trim"])
+
+    if pal["hood"]:
+        d.ellipse([cx - 9, 2 + y, cx + 9, 20 + y], fill=pal["cloth"])
+        d.ellipse([cx - 9, 2 + y, cx + 2, 14 + y], fill=pal["cloth_hi"])
+        d.ellipse([cx - 6, 8 + y, cx + 6, 19 + y], fill=(26, 22, 30))
+        d.rectangle([cx - 4, 11 + y, cx + 4, 17 + y], fill=pal["skin_sh"])
+        d.point((cx - 2, 13 + y), fill=(20, 16, 20))
+        d.point((cx + 2, 13 + y), fill=(20, 16, 20))
+    else:
+        d.ellipse([cx - 7, 3 + y, cx + 7, 17 + y], fill=pal["skin"])
+        d.ellipse([cx - 7, 3 + y, cx + 7, 11 + y], fill=pal["hair"])
+        d.polygon([(cx - 7, 8 + y), (cx - 9, 18 + y), (cx - 5, 16 + y)], fill=pal["hair_sh"])
+        d.polygon([(cx + 7, 8 + y), (cx + 9, 18 + y), (cx + 5, 16 + y)], fill=pal["hair_sh"])
+        d.rectangle([cx - 5, 12 + y, cx + 5, 17 + y], fill=pal["skin"])
+        d.rectangle([cx - 5, 16 + y, cx + 5, 17 + y], fill=pal["skin_sh"])
+        d.point((cx - 3, 13 + y), fill=(30, 22, 22))
+        d.point((cx + 3, 13 + y), fill=(30, 22, 22))
+
+    # hands and prop
+    d.rectangle([cx - 11, 22 + y + arm, cx - 8, 27 + y + arm], fill=pal["skin_sh"])
+    d.rectangle([cx + 8, 22 + y - arm, cx + 11, 27 + y - arm], fill=pal["skin_sh"])
+    if pal["prop"] == "staff":
+        d.line([(cx + 10, 6 + y), (cx + 10, 38)], fill=(96, 68, 42), width=2)
+        d.ellipse([cx + 6, 2 + y, cx + 14, 10 + y], fill=(255, 196, 96))
+        d.ellipse([cx + 8, 4 + y, cx + 12, 8 + y], fill=(255, 240, 190))
+    elif pal["prop"] == "axe":
+        d.line([(cx + 10, 10 + y), (cx + 10, 36)], fill=(104, 72, 44), width=2)
+        d.polygon([(cx + 10, 10 + y), (cx + 18, 12 + y), (cx + 10, 20 + y)], fill=(178, 182, 190))
+        d.polygon([(cx + 10, 11 + y), (cx + 15, 13 + y), (cx + 10, 17 + y)], fill=(214, 220, 228))
+    elif pal["prop"] == "scroll":
+        d.rectangle([cx - 15, 22 + y, cx - 7, 28 + y], fill=(226, 212, 176))
+        d.rectangle([cx - 15, 22 + y, cx - 7, 23 + y], fill=(188, 170, 134))
+        for ly in range(24, 28, 2):
+            d.line([(cx - 14, ly + y), (cx - 8, ly + y)], fill=(140, 122, 96))
+    return img
+
+def npc_portrait(pal, name):
+    """A head-and-shoulders bust on a framed background."""
+    img = canvas(P_W, P_H)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, P_W - 1, P_H - 1], fill=(34, 28, 38))
+    d.rectangle([2, 2, P_W - 3, P_H - 3], fill=pal["cloth_sh"])
+    cx, cy = P_W // 2, P_H // 2 + 4
+
+    # shoulders
+    d.ellipse([cx - 20, cy + 10, cx + 20, cy + 32], fill=pal["cloth"])
+    d.ellipse([cx - 20, cy + 10, cx - 2, cy + 24], fill=pal["cloth_hi"])
+    d.line([(cx - 16, cy + 14), (cx + 16, cy + 14)], fill=pal["trim"])
+
+    if pal["hood"]:
+        d.ellipse([cx - 17, cy - 22, cx + 17, cy + 16], fill=pal["cloth"])
+        d.ellipse([cx - 17, cy - 22, cx + 2, cy + 2], fill=pal["cloth_hi"])
+        d.ellipse([cx - 12, cy - 14, cx + 12, cy + 14], fill=(24, 20, 28))
+        d.ellipse([cx - 9, cy - 9, cx + 9, cy + 11], fill=pal["skin_sh"])
+    else:
+        d.ellipse([cx - 14, cy - 20, cx + 14, cy + 12], fill=pal["skin"])
+        d.ellipse([cx - 15, cy - 22, cx + 15, cy - 4], fill=pal["hair"])
+        d.polygon([(cx - 15, cy - 12), (cx - 18, cy + 8), (cx - 10, cy + 4)], fill=pal["hair_sh"])
+        d.polygon([(cx + 15, cy - 12), (cx + 18, cy + 8), (cx + 10, cy + 4)], fill=pal["hair_sh"])
+        d.ellipse([cx - 14, cy - 2, cx + 14, cy + 12], fill=pal["skin"])
+        d.ellipse([cx - 14, cy + 4, cx + 14, cy + 12], fill=pal["skin_sh"])
+
+    # face
+    for ex in (-6, 6):
+        d.ellipse([cx + ex - 3, cy - 5, cx + ex + 3, cy + 1], fill=(240, 238, 232))
+        d.ellipse([cx + ex - 1, cy - 4, cx + ex + 2, cy], fill=(38, 30, 34))
+    d.line([(cx - 9, cy - 9), (cx - 3, cy - 10)], fill=pal["hair_sh"], width=2)
+    d.line([(cx + 3, cy - 10), (cx + 9, cy - 9)], fill=pal["hair_sh"], width=2)
+    d.line([(cx - 1, cy - 2), (cx - 1, cy + 3)], fill=pal["skin_sh"])
+    d.line([(cx - 4, cy + 6), (cx + 4, cy + 6)], fill=(150, 104, 96))
+    save(img, f"portrait_{name}.png")
+
+def gen_knight_portrait():
+    """The knight's own bust, matching the sprite: dark plate and a horned helm."""
+    img = canvas(P_W, P_H)
+    d = ImageDraw.Draw(img)
+    steel, steel_hi, steel_sh = (118, 124, 136), (168, 176, 188), (72, 76, 88)
+    tunic = (126, 58, 40)
+    d.rectangle([0, 0, P_W - 1, P_H - 1], fill=(34, 28, 38))
+    d.rectangle([2, 2, P_W - 3, P_H - 3], fill=(58, 48, 54))
+    cx, cy = P_W // 2, P_H // 2 + 4
+
+    d.ellipse([cx - 21, cy + 10, cx + 21, cy + 32], fill=steel_sh)
+    d.ellipse([cx - 21, cy + 10, cx - 2, cy + 24], fill=steel)
+    d.rectangle([cx - 6, cy + 12, cx + 6, cy + 30], fill=tunic)
+
+    d.ellipse([cx - 14, cy - 20, cx + 14, cy + 12], fill=steel)
+    d.ellipse([cx - 14, cy - 20, cx + 2, cy - 2], fill=steel_hi)
+    d.polygon([(cx - 12, cy - 14), (cx - 22, cy - 24), (cx - 8, cy - 18)], fill=steel_hi)  # horns
+    d.polygon([(cx + 12, cy - 14), (cx + 22, cy - 24), (cx + 8, cy - 18)], fill=steel_hi)
+    d.rectangle([cx - 11, cy - 6, cx + 11, cy + 1], fill=(18, 16, 20))                     # visor slit
+    d.ellipse([cx - 8, cy - 5, cx - 3, cy], fill=(255, 214, 120))
+    d.ellipse([cx + 3, cy - 5, cx + 8, cy], fill=(255, 214, 120))
+    for vx in range(cx - 8, cx + 9, 5):                                                    # breaths
+        d.line([(vx, cy + 3), (vx, cy + 9)], fill=steel_sh)
+    save(img, "portrait_knight.png")
+
+def gen_wisp():
+    """The chapter 2 spirit: no body, just a drifting light with two eyes."""
+    frames = []
+    for i in range(4):
+        img = canvas(N_W, N_H)
+        d = ImageDraw.Draw(img)
+        cx, cy = N_W // 2, 20 + int(math.sin(i / 4 * math.tau) * 3)
+        for r, col in [(13, (120, 190, 255, 40)), (10, (150, 210, 255, 80)),
+                       (7, (198, 232, 255, 150)), (4, (240, 252, 255, 230))]:
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col)
+        d.ellipse([cx - 3, cy - 2, cx - 1, cy + 1], fill=(40, 70, 110))
+        d.ellipse([cx + 1, cy - 2, cx + 3, cy + 1], fill=(40, 70, 110))
+        for t in range(3):                                   # trailing motes
+            ty = cy + 12 + t * 5 + (i % 2)
+            d.point((cx + (t - 1) * 3, ty), fill=(198, 232, 255, 180))
+        frames.append(img)
+    sheet_of(frames, N_W, N_H, "npc_wisp.png")
+
+    img = canvas(P_W, P_H)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, P_W - 1, P_H - 1], fill=(34, 28, 38))
+    d.rectangle([2, 2, P_W - 3, P_H - 3], fill=(30, 46, 72))
+    cx, cy = P_W // 2, P_H // 2
+    for r, col in [(20, (110, 170, 240, 60)), (15, (150, 210, 255, 120)),
+                   (10, (200, 234, 255, 190)), (6, (245, 253, 255, 240))]:
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col)
+    d.ellipse([cx - 5, cy - 3, cx - 2, cy + 2], fill=(40, 70, 110))
+    d.ellipse([cx + 2, cy - 3, cx + 5, cy + 2], fill=(40, 70, 110))
+    save(img, "portrait_wisp.png")
+
+def gen_npcs():
+    for name, pal in NPCS.items():
+        frames = [npc_frame(pal, bob=0, arm=0), npc_frame(pal, bob=1, arm=1)]
+        sheet_of(frames, N_W, N_H, f"npc_{name}.png")
+        npc_portrait(pal, name)
+    gen_wisp()
+    gen_knight_portrait()
+
 def gen_light():
     """Radial falloff used to carve a lantern-lit hole in the darkness
     overlay on the night and cave levels."""
@@ -861,6 +1041,7 @@ if __name__ == "__main__":
     gen_gate()
     gen_fence()
     gen_lantern()
+    gen_npcs()
     gen_armor()
     gen_shield_bubble()
     gen_light()

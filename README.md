@@ -30,6 +30,7 @@ Then open `http://localhost:8080`.
 | `W` / `↑` / `SPACE` | Jump (hold for a higher jump) |
 | `J` or `X` | Attack — three-hit sword combo, air attack while jumping |
 | `SHIFT` or `L` | Dash (brief invulnerability) |
+| `E` | Talk to the person you are standing next to |
 | `M` | Sound on / off |
 | `ENTER` | Continue on the title and story screens |
 
@@ -40,6 +41,18 @@ Then open `http://localhost:8080`.
 3. **The Crystal Cave** — tiered platforming, bats, spikes.
 4. **The Frozen Peak** — slippery footing and ice wolves.
 5. **The Dragon's Lair** — a boss fight against a red, membrane-winged dragon: it hovers and breathes fire, dives at you, then lands exhausted — and that landing is your opening.
+
+## Story mode
+
+People are scattered along the road, marked with a floating `!`. Stand next to one and press `E` to talk: a portrait box types the line out, `E` or `ENTER` carries the conversation on, and play freezes until it ends. Talk to someone twice and they say something shorter the second time.
+
+What they tell you is the plot the chapter cards only hint at:
+
+- **Elder Maren** sends you east and explains that a warden's lantern only dies when the pact it was lit for is broken.
+- **Bram** the woodcutter has stopped cutting: the oak he struck this morning bled warm.
+- **The Wisp**, in the nightwood, was a warden once too — and points you at the stone beneath the roots.
+- **Gethin** reads the cave reliefs: a dragon gave up its fire so the valley could grow, men swore to guard it, and the last panel was chiselled away.
+- **Yvane**, freezing on the peak, reached the lair first. The dragon let her go, and asked her a question she could not answer.
 
 ## Audio
 
@@ -69,8 +82,9 @@ Type **`123456789`** at any point during play to switch on **invincible mode** �
 
 ```
 index.html           the game page
-src/levels.js        the five levels and their story text
+src/levels.js        the five levels, their story text and every conversation
 src/audio.js         audio engine (music, effects, ambience, reverb)
+src/dialogue.js      the conversation box and the NPCs who use it
 src/entities.js      Player (combo, dash, health), Enemy, Dragon (boss)
 src/scenes.js        boot, title, story cards, gameplay, game over, ending
 src/main.js          Phaser configuration

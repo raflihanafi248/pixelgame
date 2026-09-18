@@ -456,6 +456,12 @@ const Sound = {
         }
         break;
       }
+      case "talk": {
+        const out = this._chain(place, this.sfxBus, 0.12);
+        this._osc({ type: "square", freq: rand(420, 560), dur: 0.035,
+                    vol: 0.045 * v, t0, dest: out });
+        break;
+      }
       case "select": {
         const out = this._chain(place, this.sfxBus, 0.3);
         this._metal({ base: 880, partials: [1, 2.4], dur: 0.3, vol: 0.1 * v, t0, dest: out, type: "sine" });

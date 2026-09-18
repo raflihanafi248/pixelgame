@@ -14,6 +14,10 @@ const LOW = 282;   // reachable from the ground, and you can still walk under it
 const MID = 200;
 const HIGH = 130;
 
+// Dialogue helpers: `kn` is the knight answering; `say` builds anyone else.
+const kn = (text) => ({ speaker: "Knight", portrait: "knight", text });
+const say = (speaker, portrait) => (text) => ({ speaker, portrait, text });
+
 // Helper: an arc of collectible crystals, the shape of a jump.
 function arc(x, y, count, step = 54, rise = 26) {
   const out = [];
@@ -63,6 +67,30 @@ const LEVELS = [
       ...arc(3225, 244, 5), ...row(3540, 162, 3), ...row(4560, 162, 4),
     ],
     checkpoints: [1250, 2700, 4050],
+    npcs: [
+      {
+        id: "maren", x: 520, name: "Elder Maren",
+        lines: [
+          say("Elder Maren", "maren")("You came. I had started to think no one would."),
+          kn("The lanterns are out, elder. Every one, from the ridge down to the river."),
+          say("Elder Maren", "maren")("Not out. Refused. A warden's lantern only dies when the pact it was lit for is broken."),
+          say("Elder Maren", "maren")("Walk east and find what is breaking it."),
+          say("Elder Maren", "maren")("And knight - whatever speaks to you out there, listen before you swing."),
+        ],
+        after: [say("Elder Maren", "maren")("East, child. And keep your shield where it can be seen.")],
+      },
+      {
+        id: "bram", x: 3300, name: "Bram",
+        lines: [
+          say("Bram", "bram")("You're the warden's man. Good. Then tell me why my axe won't bite."),
+          say("Bram", "bram")("Cut into an oak this morning and it bled warm. Warm, like a throat."),
+          kn("The wood is waking up."),
+          say("Bram", "bram")("Then I'm done cutting. Take the east road if you must."),
+          say("Bram", "bram")("Just don't take anything from it. Not a branch, not a stone."),
+        ],
+        after: [say("Bram", "bram")("Still going east? Gods keep you. I'm going the other way.")],
+      },
+    ],
   },
   {
     key: "nightwood",
@@ -95,6 +123,19 @@ const LEVELS = [
       ...row(3100, 162, 3), ...arc(4400, 244, 5), ...row(5150, 330, 4),
     ],
     checkpoints: [1150, 2600, 4150],
+    npcs: [
+      {
+        id: "wisp", x: 2600, name: "The Wisp", float: true,
+        lines: [
+          say("The Wisp", "wisp")("Little light. Little light, in all this dark."),
+          say("The Wisp", "wisp")("We were wardens too, once. We forgot our promise, and the forest kept us anyway."),
+          kn("What promise?"),
+          say("The Wisp", "wisp")("The one your order swore to the old one beneath the roots."),
+          say("The Wisp", "wisp")("Ask the stone. Stone remembers better than men do."),
+        ],
+        after: [say("The Wisp", "wisp")("Down. Down and under the roots. The stone is waiting.")],
+      },
+    ],
   },
   {
     key: "crystalcave",
@@ -131,6 +172,20 @@ const LEVELS = [
       ...arc(4710, 244, 5), ...row(4940, 162, 4),
     ],
     checkpoints: [1000, 2750, 4350],
+    npcs: [
+      {
+        id: "gethin", x: 2600, name: "Gethin",
+        lines: [
+          say("Gethin", "gethin")("Don't touch the reliefs. They have waited nine hundred years to be read, not handled."),
+          say("Gethin", "gethin")("There - a dragon giving up its fire so the valley could grow."),
+          say("Gethin", "gethin")("And there, men promising to guard what that fire made."),
+          kn("And the last panel?"),
+          say("Gethin", "gethin")("Empty. Someone chiselled it away."),
+          say("Gethin", "gethin")("Whatever we did, knight, we did not want it remembered."),
+        ],
+        after: [say("Gethin", "gethin")("Go on up. I'll keep reading. Someone should.")],
+      },
+    ],
   },
   {
     key: "frozenpeak",
@@ -164,6 +219,21 @@ const LEVELS = [
       ...row(3240, 162, 3), ...arc(4310, 244, 5), ...row(4940, 330, 4),
     ],
     checkpoints: [1200, 2750, 4350],
+    npcs: [
+      {
+        id: "yvane", x: 1750, name: "Yvane",
+        lines: [
+          say("Yvane", "yvane")("Don't. Don't waste the warmth on me, I'm past it."),
+          say("Yvane", "yvane")("I reached the lair. I saw it sleeping, and I thought: mercy. Strike now, while it cannot answer."),
+          kn("Yvane."),
+          say("Yvane", "yvane")("It woke. And it did not kill me. It asked me a question and let me walk away."),
+          say("Yvane", "yvane")("That was worse."),
+          kn("What did it ask?"),
+          say("Yvane", "yvane")("Whether we ever meant it. When it asks you - answer honestly. It can tell."),
+        ],
+        after: [say("Yvane", "yvane")("Go. Before the cold finishes what it started.")],
+      },
+    ],
   },
   {
     key: "lair",

@@ -80,6 +80,11 @@ class BootScene extends Phaser.Scene {
     this.load.spritesheet("heart", ASSET_DATA.heart, { frameWidth: 32, frameHeight: 28 });
     this.load.spritesheet("armor", ASSET_DATA.armor, { frameWidth: 30, frameHeight: 32 });
     this.load.image("shield", ASSET_DATA.shield);
+    for (const npc of ["maren", "bram", "gethin", "yvane", "wisp"]) {
+      this.load.spritesheet(`npc_${npc}`, ASSET_DATA[`npc_${npc}`], { frameWidth: 64, frameHeight: 80 });
+      this.load.image(`portrait_${npc}`, ASSET_DATA[`portrait_${npc}`]);
+    }
+    this.load.image("portrait_knight", ASSET_DATA.portrait_knight);
     this.load.spritesheet("checkpoint", ASSET_DATA.checkpoint, { frameWidth: 52, frameHeight: 88 });
   }
 
@@ -123,6 +128,12 @@ class BootScene extends Phaser.Scene {
     A.create({ key: "dragon-death", frames: A.generateFrameNumbers("dragon", { start: 18, end: 21 }), frameRate: 5 });
     A.create({ key: "dragon-rest", frames: A.generateFrameNumbers("dragon", { start: 22, end: 23 }), frameRate: 1.6, repeat: -1 });
     A.create({ key: "fireball-fly", frames: A.generateFrameNumbers("fireball", { start: 0, end: 1 }), frameRate: 10, repeat: -1 });
+    for (const npc of ["maren", "bram", "gethin", "yvane"]) {
+      A.create({ key: `npc-${npc}`, frames: A.generateFrameNumbers(`npc_${npc}`, { start: 0, end: 1 }),
+                 frameRate: 2, repeat: -1 });
+    }
+    A.create({ key: "npc-wisp", frames: A.generateFrameNumbers("npc_wisp", { start: 0, end: 3 }),
+               frameRate: 6, repeat: -1 });
     A.create({ key: "crystal-spin", frames: A.generateFrameNumbers("crystal", { start: 0, end: 3 }), frameRate: 8, repeat: -1 });
 
     this.scene.start("title");
@@ -163,7 +174,7 @@ class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
-      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)\nSHIFT   dash\nM   sound on / off\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits",
+      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)      SHIFT   dash\nE   talk to people            M   sound on / off\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits",
       { fontFamily: FONT, fontSize: "14px", color: "#dccab4", align: "center",
         lineSpacing: 6, stroke: "#1c1108", strokeThickness: 3 }
     ).setOrigin(0.5);
@@ -387,6 +398,10 @@ class GameScene extends Phaser.Scene {
     this.shieldFx = this.add.image(this.player.x, this.player.y, "shield")
       .setDepth(21).setVisible(false);
 
+    this.dialogue = new DialogueBox(this);
+    this.npcs = (this.level.npcs || []).map((def) => new Npc(this, def));
+    this.events.once("shutdown", () => this.npcs.forEach((n) => n.destroyExtras()));
+
     this.enemies = this.add.group();
     for (const e of this.level.enemies || []) {
       const cfg = ENEMY_TYPES[e.type];
@@ -501,6 +516,7 @@ class GameScene extends Phaser.Scene {
     this.keys = this.input.keyboard.addKeys({
       left: K.A, right: K.D, up: K.W, jump: K.SPACE,
       attack: K.J, attack2: K.X, dash: K.SHIFT, dash2: K.L,
+      talk: K.E, enter: K.ENTER,
     });
   }
 
@@ -653,6 +669,32 @@ class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------- frame loop
   update(time) {
+    // A conversation freezes play: the knight stops, enemies hold still, and
+    // the only input that does anything is "continue".
+    if (this.dialogue.active) {
+      this.dialogue.update(time);
+      this.player.setVelocityX(0);
+      this.player.play("hero-idle", true);
+      this.player.invulnUntil = Math.max(this.player.invulnUntil, time + 200);
+      this.enemies.getChildren().forEach((en) => en.setVelocity(0, 0));
+      if (Phaser.Input.Keyboard.JustDown(this.keys.talk) ||
+          Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
+        this.dialogue.advance();
+      }
+      return;
+    }
+
+    this.npcs.forEach((n) => n.refresh(this.player));
+    if (Phaser.Input.Keyboard.JustDown(this.keys.talk)) {
+      const who = this.npcs.find((n) => n.inRange(this.player));
+      if (who) {
+        Sound.play("select", { x: who.x });
+        this.player.setVelocity(0, 0);
+        this.dialogue.start(who.conversation());
+        return;
+      }
+    }
+
     const c = this.cursors, k = this.keys;
     const input = {
       left: c.left.isDown || k.left.isDown,
