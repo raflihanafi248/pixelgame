@@ -1,0 +1,20 @@
+{
+  "name": "pixelgame",
+  "version": "1.0.0",
+  "description": "Pixel Forest Adventure - a 2D pixel-art side-scroller built with Phaser.js",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raflihanafi248/pixelgame.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/raflihanafi248/pixelgame/issues"
+  },
+  "homepage": "https://github.com/raflihanafi248/pixelgame#readme"
+}
