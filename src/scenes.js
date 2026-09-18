@@ -46,10 +46,12 @@ class BootScene extends Phaser.Scene {
     this.load.spritesheet("slime", ASSET_DATA.slime, { frameWidth: 56, frameHeight: 44 });
     this.load.spritesheet("bat", ASSET_DATA.bat, { frameWidth: 64, frameHeight: 48 });
     this.load.spritesheet("wraith", ASSET_DATA.wraith, { frameWidth: 60, frameHeight: 80 });
-    this.load.spritesheet("dragon", ASSET_DATA.dragon, { frameWidth: 192, frameHeight: 152 });
+    this.load.spritesheet("dragon", ASSET_DATA.dragon, { frameWidth: 256, frameHeight: 192 });
     this.load.spritesheet("fireball", ASSET_DATA.fireball, { frameWidth: 40, frameHeight: 32 });
     this.load.spritesheet("crystal", ASSET_DATA.crystal, { frameWidth: 36, frameHeight: 36 });
     this.load.spritesheet("heart", ASSET_DATA.heart, { frameWidth: 32, frameHeight: 28 });
+    this.load.spritesheet("armor", ASSET_DATA.armor, { frameWidth: 30, frameHeight: 32 });
+    this.load.image("shield", ASSET_DATA.shield);
     this.load.spritesheet("checkpoint", ASSET_DATA.checkpoint, { frameWidth: 52, frameHeight: 88 });
   }
 
@@ -85,9 +87,12 @@ class BootScene extends Phaser.Scene {
     walker("goblin", 4); walker("wolf", 6); walker("icewolf", 6);
     walker("slime", 3); walker("bat", 10); walker("wraith", 4);
 
-    A.create({ key: "dragon-idle", frames: A.generateFrameNumbers("dragon", { start: 0, end: 1 }), frameRate: 2, repeat: -1 });
-    A.create({ key: "dragon-attack", frames: A.generateFrameNumbers("dragon", { start: 2, end: 3 }), frameRate: 6, repeat: -1 });
-    A.create({ key: "dragon-hurt", frames: A.generateFrameNumbers("dragon", { start: 4, end: 4 }), frameRate: 1 });
+    A.create({ key: "dragon-fly", frames: A.generateFrameNumbers("dragon", { start: 0, end: 5 }), frameRate: 11, repeat: -1 });
+    A.create({ key: "dragon-roar", frames: A.generateFrameNumbers("dragon", { start: 6, end: 11 }), frameRate: 9 });
+    A.create({ key: "dragon-swoop", frames: A.generateFrameNumbers("dragon", { start: 12, end: 15 }), frameRate: 13, repeat: -1 });
+    A.create({ key: "dragon-hurt", frames: A.generateFrameNumbers("dragon", { start: 16, end: 17 }), frameRate: 12 });
+    A.create({ key: "dragon-death", frames: A.generateFrameNumbers("dragon", { start: 18, end: 21 }), frameRate: 5 });
+    A.create({ key: "dragon-rest", frames: A.generateFrameNumbers("dragon", { start: 22, end: 23 }), frameRate: 1.6, repeat: -1 });
     A.create({ key: "fireball-fly", frames: A.generateFrameNumbers("fireball", { start: 0, end: 1 }), frameRate: 10, repeat: -1 });
     A.create({ key: "crystal-spin", frames: A.generateFrameNumbers("crystal", { start: 0, end: 3 }), frameRate: 8, repeat: -1 });
 
@@ -125,7 +130,7 @@ class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
-      "A / D  atau  ←  →   bergerak\nW / ↑ / SPASI   lompat\nJ   serang (combo 3x)\nSHIFT   dash menghindar\nM   nyalakan / matikan suara",
+      "A / D  atau  ←  →   bergerak\nW / ↑ / SPASI   lompat\nJ   serang (combo 3x)\nSHIFT   dash menghindar\nM   nyalakan / matikan suara\n\nKalahkan musuh untuk mendapat ARMOR — menahan 3 serangan",
       { fontFamily: FONT, fontSize: "14px", color: "#c4b3a0", align: "center", lineSpacing: 6 }
     ).setOrigin(0.5);
 
@@ -312,6 +317,9 @@ class GameScene extends Phaser.Scene {
     // Brief grace period so respawning next to an enemy is not an instant hit.
     this.player.invulnUntil = this.time.now + 1400;
 
+    this.shieldFx = this.add.image(this.player.x, this.player.y, "shield")
+      .setDepth(21).setVisible(false);
+
     this.enemies = this.add.group();
     for (const e of this.level.enemies || []) {
       const cfg = ENEMY_TYPES[e.type];
@@ -371,6 +379,11 @@ class GameScene extends Phaser.Scene {
       const h = this.add.image(26 + i * 34, 28, "heart", 0).setScrollFactor(0).setDepth(60);
       this.hearts.push(h);
     }
+    this.armorPips = [];
+    for (let i = 0; i < 3; i++) {
+      this.armorPips.push(this.add.image(206 + i * 26, 26, "armor", 1)
+        .setScrollFactor(0).setDepth(60));
+    }
     this.livesText = this.add.text(24, 54, "", {
       fontFamily: FONT, fontSize: "15px", color: "#e8dccb",
     }).setScrollFactor(0).setDepth(60);
@@ -399,6 +412,7 @@ class GameScene extends Phaser.Scene {
 
   refreshHud() {
     this.hearts.forEach((h, i) => h.setFrame(i < this.player.hp ? 0 : 1));
+    this.armorPips.forEach((p, i) => p.setFrame(i < this.player.armor ? 0 : 1));
     this.livesText.setText(`NYAWA x${GameState.lives}`);
     this.scoreText.setText(`KRISTAL  ${GameState.score}`);
   }
@@ -489,7 +503,28 @@ class GameScene extends Phaser.Scene {
 
   onEnemyKilled(enemy) {
     GameState.score += 2;
+    this.player.gainArmor();
     this.refreshHud();
+  }
+
+  onArmorChanged(what) {
+    this.refreshHud();
+    if (what === "broken") {
+      this.cameras.main.flash(120, 180, 210, 255);
+      for (let i = 0; i < 9; i++) { // plates flying off
+        const shard = this.add.image(this.player.x, this.player.y - 20, "particle")
+          .setTint(0x9fd4ff).setScale(2.2).setDepth(30);
+        this.tweens.add({
+          targets: shard,
+          x: this.player.x + Phaser.Math.Between(-110, 110),
+          y: this.player.y - 20 + Phaser.Math.Between(-80, 50),
+          alpha: 0, scale: 0.4, duration: 420,
+          onComplete: () => shard.destroy(),
+        });
+      }
+    } else if (what === "hit") {
+      this.shieldFx?.setAlpha(1);
+    }
   }
 
   onPlayerDeath() {
@@ -562,6 +597,19 @@ class GameScene extends Phaser.Scene {
     if (!this.player.dead && this.player.y > GAME_H + 120) {
       this.player.hp = 0;
       this.player.die();
+    }
+
+    if (this.shieldFx) {
+      const on = this.player.armor > 0 && !this.player.dead;
+      this.shieldFx.setVisible(on);
+      if (on) {
+        this.shieldFx.setPosition(this.player.x - 2, this.player.y - 6);
+        // thinner shell as the plates run out, with a slow pulse
+        const strength = this.player.armor / this.player.maxArmor;
+        const pulse = 0.8 + Math.sin(time / 260) * 0.12;
+        this.shieldFx.setAlpha(Phaser.Math.Clamp(0.25 + strength * 0.5, 0, 1) * pulse);
+        this.shieldFx.setScale(0.9 + strength * 0.18);
+      }
     }
 
     const camX = this.cameras.main.scrollX;

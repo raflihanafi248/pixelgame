@@ -39,7 +39,7 @@ Lalu buka `http://localhost:8080`.
 2. **Hutan Malam Berkabut** — gelap, jarak pandang terbatas, arwah mulai muncul.
 3. **Gua Kristal** — platforming bertingkat, kelelawar, duri.
 4. **Puncak Beku** — permukaan licin, serigala es.
-5. **Sarang Sang Naga** — pertarungan boss dengan pola serangan (melayang & menembak bola api, menukik, lalu mendarat — saat mendarat itulah celahmu menyerang).
+5. **Sarang Sang Naga** — pertarungan boss melawan naga merah bersayap membran: ia melayang sambil meraung dan menyemburkan api, menukik menyambar, lalu mendarat kelelahan — saat mendarat itulah celahmu menyerang.
 
 ## Audio
 
@@ -56,6 +56,7 @@ Semua suara disintesis langsung lewat Web Audio API — tidak ada satu pun file 
 ## Sistem
 
 - **HP & nyawa** — 5 hati, 3 nyawa, kebal sesaat setelah terkena serangan.
+- **Armor** — setiap kali mengalahkan musuh kamu mendapat armor berisi 3 lapis. Selama armor menyala (terlihat sebagai kubah energi di sekeliling karakter dan 3 ikon perisai di HUD), serangan musuh menghantam armor, bukan nyawamu. Setelah 3 serangan armor pecah, dan kalahkan musuh lagi untuk memakainya kembali. Jatuh ke jurang tetap mematikan — armor tidak menolong di sana.
 - **Checkpoint** — lentera batu di sepanjang level; mati akan mengembalikanmu ke checkpoint terakhir.
 - **Kristal** — dikumpulkan sepanjang perjalanan sebagai skor; mengalahkan musuh juga menambah skor.
 - **Jurang** — jatuh berarti kehilangan satu nyawa.

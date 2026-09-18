@@ -378,75 +378,241 @@ def gen_wraith():
     sheet_of(frames, w, h, "wraith.png")
 
 # ==================================================================== BOSS: FOREST DRAGON
-D_W, D_H = 96, 76
+D_W, D_H = 128, 96
 
-def dragon_frame(mouth_open=False, wing_up=True, hurt=False, rear=False):
+# Red dragon palette
+DS_SHADOW = (58, 10, 16)
+DS_DARK = (96, 20, 26)
+DS_MID = (154, 38, 38)
+DS_LIGHT = (198, 64, 52)
+DS_HI = (236, 116, 86)
+D_BELLY = (226, 180, 122)
+D_BELLY_SH = (194, 144, 94)
+D_MEMB = (150, 46, 50)
+D_MEMB_LIGHT = (198, 92, 82)
+D_BONE = (238, 226, 198)
+D_EYE = (255, 208, 70)
+D_FIRE = [(255, 244, 200), (255, 206, 96), (255, 150, 48), (226, 86, 30)]
+
+def _rot(px, py, ox, oy, ang):
+    c, s_ = math.cos(ang), math.sin(ang)
+    dx, dy = px - ox, py - oy
+    return (ox + dx * c - dy * s_, oy + dx * s_ + dy * c)
+
+def _bez(p0, p1, p2, steps=10):
+    """Quadratic curve, used as the spine for necks and tails."""
+    out = []
+    for i in range(steps + 1):
+        t = i / steps
+        u = 1 - t
+        out.append((u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0],
+                    u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]))
+    return out
+
+def _limb(d, pts, r0, r1, fill, hi=None):
+    """A tapering chain of circles - reads as a neck, a tail or a leg."""
+    n = len(pts) - 1
+    for i, (x, y) in enumerate(pts):
+        t = i / max(1, n)
+        r = r0 + (r1 - r0) * t
+        d.ellipse([x - r, y - r, x + r, y + r], fill=fill)
+        if hi and r > 2:
+            d.ellipse([x - r * 0.55, y - r * 0.9, x + r * 0.15, y - r * 0.25], fill=hi)
+
+def _wing(d, sx, sy, ang, span, front):
+    """Membrane wing: four finger bones from the shoulder with a scalloped
+    membrane stretched between them. `ang` sweeps the whole hand through the
+    flap, so one parameter drives the entire cycle."""
+    memb = D_MEMB_LIGHT if front else D_MEMB
+    bone = DS_LIGHT if front else DS_DARK
+    fingers = [(-0.95, 1.00), (-0.42, 1.05), (0.08, 0.94), (0.55, 0.70)]
+    tips = [(sx + math.cos(ang + fa) * span * fl,
+             sy + math.sin(ang + fa) * span * fl) for fa, fl in fingers]
+
+    poly = [(sx, sy)]
+    for i, tip in enumerate(tips):
+        poly.append(tip)
+        if i < len(tips) - 1:
+            nxt = tips[i + 1]
+            mx, my = (tip[0] + nxt[0]) / 2, (tip[1] + nxt[1]) / 2
+            poly.append((mx + (sx - mx) * 0.22, my + (sy - my) * 0.22))  # scallop
+    poly.append((sx + math.cos(ang + 0.9) * span * 0.3,
+                 sy + math.sin(ang + 0.9) * span * 0.3))
+    d.polygon(poly, fill=memb)
+
+    # a lighter panel near the leading edge gives the membrane some depth
+    d.polygon([(sx, sy), tips[0], tips[1],
+               (sx + math.cos(ang - 0.4) * span * 0.35,
+                sy + math.sin(ang - 0.4) * span * 0.35)],
+              fill=D_MEMB_LIGHT if front else (168, 62, 62))
+
+    for tip in tips:
+        d.line([(sx, sy), tip], fill=bone, width=2)
+        d.ellipse([tip[0] - 1.5, tip[1] - 1.5, tip[0] + 1.5, tip[1] + 1.5], fill=D_BONE)
+    d.ellipse([sx - 5, sy - 5, sx + 5, sy + 5], fill=DS_MID if front else DS_DARK)
+
+def dragon_frame(wing=0.0, neck=0.0, jaw=0.0, tail=0.0, bob=0.0, legs=0.0,
+                 lean=0.0, breath=0.0, hurt=False, collapse=0.0):
+    """One pose. Every limb is driven by a parameter so the animation frames
+    are interpolated poses rather than hand-shifted copies."""
     img = canvas(D_W, D_H)
     d = ImageDraw.Draw(img)
-    scale_d, scale_m, scale_h = (28, 58, 40), (48, 96, 62), (82, 140, 88)
-    belly = (176, 156, 96)
-    horn = (222, 208, 170)
-    membrane = (118, 62, 52)
-    membrane_d = (78, 38, 34)
-    eye = (255, 190, 60)
 
-    lift = -6 if rear else 0
-    # tail
-    d.line([(14, 60 + lift), (2, 46 + lift)], fill=scale_d, width=7)
-    d.line([(14, 60 + lift), (2, 46 + lift)], fill=scale_m, width=3)
-    d.polygon([(2, 46 + lift), (0, 38 + lift), (7, 44 + lift)], fill=membrane)
-    # wing
-    wy = 8 if wing_up else 26
-    d.polygon([(44, 32 + lift), (26, wy), (12, wy + 4), (24, 30 + lift), (18, 40 + lift), (40, 40 + lift)], fill=membrane)
-    d.polygon([(44, 32 + lift), (26, wy), (30, wy + 8), (40, 36 + lift)], fill=membrane_d)
-    d.line([(44, 32 + lift), (26, wy)], fill=scale_d, width=2)
-    d.line([(44, 32 + lift), (18, 40 + lift)], fill=scale_d, width=2)
-    # body
-    d.ellipse([16, 34 + lift, 62, 66 + lift], fill=scale_m)
-    d.ellipse([16, 34 + lift, 62, 48 + lift], fill=scale_h)
-    d.ellipse([22, 48 + lift, 56, 66 + lift], fill=belly)
-    # legs
-    d.rectangle([24, 60 + lift, 32, 74], fill=scale_d)
-    d.rectangle([46, 60 + lift, 54, 74], fill=scale_m)
-    for fx in (24, 46):
-        d.polygon([(fx - 2, 74), (fx + 10, 74), (fx + 10, 70), (fx - 2, 70)], fill=scale_d)
-        for cxx in range(fx, fx + 10, 4):
-            d.line([(cxx, 74), (cxx, 71)], fill=horn)
-    # neck + head
-    d.line([(52, 44 + lift), (74, 24 + lift)], fill=scale_m, width=11)
-    d.line([(52, 44 + lift), (74, 24 + lift)], fill=scale_h, width=5)
-    d.ellipse([68, 12 + lift, 92, 32 + lift], fill=scale_m)
-    d.ellipse([68, 12 + lift, 92, 22 + lift], fill=scale_h)
-    d.polygon([(70, 16 + lift), (60, 6 + lift), (72, 12 + lift)], fill=horn)
-    d.polygon([(78, 12 + lift), (74, 2 + lift), (84, 11 + lift)], fill=horn)
-    d.ellipse([80, 18 + lift, 84, 22 + lift], fill=eye)
-    d.point((82, 20 + lift), fill=OUTL)
-    if mouth_open:
-        d.polygon([(86, 24 + lift), (96, 30 + lift), (86, 32 + lift)], fill=(60, 20, 24))
-        d.polygon([(86, 24 + lift), (92, 27 + lift), (86, 27 + lift)], fill=(255, 210, 120))
-        for tx in range(87, 94, 3):
-            d.line([(tx, 26 + lift), (tx, 29 + lift)], fill=horn)
-    else:
-        d.line([(86, 27 + lift), (94, 29 + lift)], fill=scale_d, width=2)
-    # back spikes
-    for i, sx in enumerate(range(22, 58, 8)):
-        d.polygon([(sx, 36 + lift), (sx + 4, 26 + lift - i), (sx + 8, 36 + lift)], fill=horn)
+    body_x, body_y = 54, 56 + bob + collapse * 26
+    wing_ang = -2.0 + wing * 1.75          # -2.0 rad = raised, ~-0.25 = swept down
+    lean_y = lean * 10
+
+    # ---- far wing (behind the body, darker)
+    _wing(d, body_x + 2, body_y - 12 + lean_y, wing_ang + 0.22, 40 - collapse * 14, front=False)
+
+    # ---- tail: a long curve that lags behind the body
+    tail_end = (4 + tail * 4, 34 + tail * 20 + collapse * 20)
+    tail_pts = _bez((body_x - 14, body_y + 4), (30, body_y + 10 + tail * 10), tail_end, 12)
+    _limb(d, tail_pts, 9, 1.5, DS_MID, DS_LIGHT)
+    d.polygon([tail_end,
+               (tail_end[0] - 9, tail_end[1] - 9),
+               (tail_end[0] + 3, tail_end[1] - 3)], fill=D_MEMB)
+
+    # ---- body
+    d.ellipse([body_x - 25, body_y - 17 + lean_y, body_x + 25, body_y + 19 + lean_y], fill=DS_MID)
+    d.ellipse([body_x - 25, body_y - 17 + lean_y, body_x + 22, body_y + 2 + lean_y], fill=DS_LIGHT)
+    d.ellipse([body_x - 18, body_y + 1 + lean_y, body_x + 20, body_y + 19 + lean_y], fill=D_BELLY)
+    for i in range(5):  # belly scutes
+        sx0 = body_x - 15 + i * 8
+        d.line([(sx0, body_y + 4 + lean_y), (sx0, body_y + 17 + lean_y)], fill=D_BELLY_SH)
+
+    # ---- hind legs
+    tuck = legs
+    for i, (lx, spread) in enumerate([(body_x - 8, -1), (body_x + 12, 1)]):
+        hip = (lx, body_y + 12 + lean_y)
+        knee = (lx + spread * 6 - tuck * spread * 4, body_y + 22 + lean_y - tuck * 12)
+        foot = (lx + spread * 4, body_y + 36 + lean_y - tuck * 22 + collapse * 6)
+        _limb(d, _bez(hip, knee, foot, 6), 6, 3.5,
+              DS_DARK if i == 0 else DS_MID)
+        if tuck < 0.5:  # claws only read when the leg is extended
+            for c in range(3):
+                cx = foot[0] - 4 + c * 4
+                d.line([(cx, foot[1]), (cx - 1, foot[1] + 4)], fill=D_BONE, width=1)
+
+    # ---- neck and head
+    head_x = 100 + neck * 6
+    head_y = 26 - neck * 12 + lean_y + collapse * 30
+    neck_pts = _bez((body_x + 16, body_y - 8 + lean_y),
+                    (body_x + 34, body_y - 26 - neck * 8 + lean_y),
+                    (head_x - 8, head_y + 4), 10)
+    _limb(d, neck_pts, 10, 6, DS_MID, DS_LIGHT)
+
+    d.ellipse([head_x - 11, head_y - 8, head_x + 11, head_y + 8], fill=DS_MID)
+    d.ellipse([head_x - 11, head_y - 8, head_x + 7, head_y + 1], fill=DS_LIGHT)
+    d.polygon([(head_x + 4, head_y - 4), (head_x + 20, head_y + 1),
+               (head_x + 4, head_y + 5)], fill=DS_MID)  # snout
+    d.polygon([(head_x + 4, head_y - 3), (head_x + 19, head_y + 1),
+               (head_x + 6, head_y + 0)], fill=DS_LIGHT)
+
+    # horns sweeping back
+    for hy, hl in [(-6, 15), (-2, 11)]:
+        d.polygon([(head_x - 4, head_y + hy), (head_x - 4 - hl, head_y + hy - hl * 0.55),
+                   (head_x - 1, head_y + hy + 3)], fill=D_BONE)
+    d.polygon([(head_x - 8, head_y + 4), (head_x - 17, head_y + 9),
+               (head_x - 7, head_y + 8)], fill=D_MEMB)  # jaw frill
+
+    # jaw
+    jo = jaw * 11
+    d.polygon([(head_x + 3, head_y + 3), (head_x + 19, head_y + 2 + jo * 0.5),
+               (head_x + 4, head_y + 6 + jo)], fill=DS_DARK)
+    if jaw > 0.12:
+        d.polygon([(head_x + 4, head_y + 4), (head_x + 17, head_y + 3 + jo * 0.5),
+                   (head_x + 5, head_y + 5 + jo)], fill=(72, 16, 20))
+        for tx in range(6, 16, 4):  # teeth
+            d.line([(head_x + tx, head_y + 4), (head_x + tx, head_y + 7)], fill=D_BONE)
+
+    eye_h = 4 if not hurt else 2
+    d.ellipse([head_x + 1, head_y - 4, head_x + 6, head_y - 4 + eye_h], fill=D_EYE)
+    d.line([(head_x + 3, head_y - 4), (head_x + 3, head_y - 4 + eye_h)], fill=(30, 10, 10))
+    d.ellipse([head_x + 13, head_y - 1, head_x + 15, head_y + 1], fill=DS_SHADOW)  # nostril
+
+    # ---- spine ridge from head to tail
+    ridge = neck_pts[2:] + [(body_x + 8, body_y - 16 + lean_y),
+                            (body_x - 4, body_y - 17 + lean_y),
+                            (body_x - 16, body_y - 12 + lean_y)]
+    for i, (rx, ry) in enumerate(ridge[::2]):
+        h = 5 + (i % 3)
+        d.polygon([(rx - 3, ry), (rx, ry - h), (rx + 3, ry)], fill=D_BONE)
+
+    # ---- near wing (in front, catches the light)
+    _wing(d, body_x + 6, body_y - 14 + lean_y, wing_ang, 46 - collapse * 16, front=True)
+
+    # ---- fire breath
+    if breath > 0:
+        mx, my = head_x + 18, head_y + 4 + jo * 0.6
+        for i in range(int(6 * breath) + 1):
+            t = i / 6
+            rx = 5 + t * 16 * breath
+            ry = 3 + t * 11 * breath
+            cx = mx + t * 34 * breath
+            col = D_FIRE[min(3, int(t * 3.2))]
+            d.ellipse([cx - rx, my - ry + t * 3, cx + rx, my + ry + t * 3], fill=col)
 
     if hurt:
-        overlay = Image.new("RGBA", (D_W, D_H), (255, 80, 80, 110))
-        img = Image.alpha_composite(img, Image.composite(overlay, Image.new("RGBA", (D_W, D_H), (0, 0, 0, 0)), img.split()[3]))
+        overlay = Image.new("RGBA", (D_W, D_H), (255, 90, 80, 120))
+        img = Image.alpha_composite(
+            img, Image.composite(overlay, Image.new("RGBA", (D_W, D_H), (0, 0, 0, 0)), img.split()[3]))
     return img
 
 def gen_dragon():
-    frames = [
-        dragon_frame(wing_up=True),                    # 0 idle
-        dragon_frame(wing_up=False),                   # 1 idle
-        dragon_frame(mouth_open=True, rear=True),      # 2 attack
-        dragon_frame(mouth_open=True, wing_up=False, rear=True),  # 3 attack
-        dragon_frame(hurt=True),                       # 4 hurt
+    frames = []
+
+    # fly: a full flap cycle - the body rises as the wings come down
+    for i in range(6):
+        ph = i / 6
+        w = math.sin(ph * math.tau)
+        frames.append(dragon_frame(
+            wing=w, bob=-w * 5, neck=0.12 * math.sin(ph * math.tau + 1.0),
+            tail=0.5 * math.sin(ph * math.tau - 0.8), legs=0.65, jaw=0.05))
+
+    # roar: rear back, chest up, jaw opens, fire
+    roar = [
+        dict(wing=-0.85, neck=-0.3, jaw=0.05, tail=-0.4, bob=2, legs=0.5),
+        dict(wing=-0.2, neck=0.5, jaw=0.15, tail=-0.1, bob=-2, legs=0.6),
+        dict(wing=0.6, neck=0.9, jaw=0.55, tail=0.3, bob=-5, legs=0.7),
+        dict(wing=0.9, neck=0.8, jaw=1.0, tail=0.5, bob=-4, legs=0.7, breath=0.55),
+        dict(wing=0.7, neck=0.6, jaw=1.0, tail=0.4, bob=-2, legs=0.65, breath=1.0),
+        dict(wing=0.1, neck=0.25, jaw=0.5, tail=0.1, bob=0, legs=0.6, breath=0.35),
     ]
-    sheet_of(frames, D_W, D_H, "dragon.png")
-    print("  dragon frame size:", D_W * SCALE, "x", D_H * SCALE)
+    frames += [dragon_frame(**p) for p in roar]
+
+    # swoop: wings swept back, body pitched forward, legs tucked
+    swoop = [
+        dict(wing=-0.6, neck=0.4, jaw=0.3, tail=-0.5, legs=0.9, lean=-0.4, bob=-3),
+        dict(wing=0.25, neck=0.15, jaw=0.5, tail=-0.2, legs=1.0, lean=-0.2, bob=0),
+        dict(wing=0.95, neck=-0.1, jaw=0.6, tail=0.2, legs=1.0, lean=0.2, bob=3),
+        dict(wing=0.4, neck=0.1, jaw=0.4, tail=0.5, legs=0.95, lean=0.0, bob=1),
+    ]
+    frames += [dragon_frame(**p) for p in swoop]
+
+    # hurt
+    frames.append(dragon_frame(wing=-0.5, neck=-0.55, jaw=0.7, tail=-0.6, bob=3, legs=0.5, hurt=True))
+    frames.append(dragon_frame(wing=-0.2, neck=-0.3, jaw=0.4, tail=0.3, bob=1, legs=0.55, hurt=True))
+
+    # death: wings fold, head drops, body sinks
+    for i in range(4):
+        t = (i + 1) / 4
+        frames.append(dragon_frame(
+            wing=-0.9 + t * 0.5, neck=-0.4 - t * 0.6, jaw=0.6 - t * 0.5,
+            tail=0.3 * (1 - t), bob=t * 6, legs=0.2, collapse=t))
+
+    # rest: grounded, wings folded, breathing
+    frames.append(dragon_frame(wing=0.95, neck=-0.15, jaw=0.08, tail=0.15, bob=0, legs=0.05))
+    frames.append(dragon_frame(wing=0.95, neck=-0.1, jaw=0.14, tail=0.25, bob=-2, legs=0.05))
+
+    cols = 6
+    rows = (len(frames) + cols - 1) // cols
+    sheet = canvas(cols * D_W, rows * D_H)
+    for i, f in enumerate(frames):
+        sheet.paste(f, ((i % cols) * D_W, (i // cols) * D_H), f)
+    save(sheet, "dragon.png")
+    print(f"  dragon: {len(frames)} frames, {cols}x{rows} grid, frame {D_W*SCALE}x{D_H*SCALE}")
+    print("  fly 0-5, roar 6-11, swoop 12-15, hurt 16-17, death 18-21, rest 22-23")
 
 def gen_fireball():
     w, h = 20, 16
@@ -591,6 +757,58 @@ def gen_lantern():
     d.rectangle([0, 33, 9, 34], fill=frame)
     save(img, "lantern.png")
 
+def gen_armor():
+    """HUD pip for the armour the player earns from kills: a plated shield,
+    lit when the charge is intact and dark once it is spent."""
+    w, h = 15, 16
+    frames = []
+    for full in (True, False):
+        img = canvas(w, h)
+        d = ImageDraw.Draw(img)
+        rim = (188, 198, 214) if full else (62, 60, 66)
+        face = (108, 148, 196) if full else (46, 46, 54)
+        hi = (186, 222, 255) if full else (70, 70, 78)
+        body = [(1, 1), (13, 1), (13, 8), (7, 15), (1, 8)]
+        d.polygon(body, fill=rim)
+        d.polygon([(3, 3), (11, 3), (11, 8), (7, 12), (3, 8)], fill=face)
+        d.polygon([(3, 3), (7, 3), (7, 12), (3, 8)], fill=hi if full else face)
+        d.line([(7, 3), (7, 12)], fill=rim)
+        d.polygon(body, outline=(24, 22, 28))
+        frames.append(img)
+    sheet_of(frames, w, h, "armor.png")
+
+def gen_shield_bubble():
+    """The barrier drawn around the player while the armour holds: a soft
+    dome with two crisp rims and a highlight, so it reads as a shell at pixel
+    size instead of a scribble."""
+    w, h = 62, 78
+    img = canvas(w, h)
+    d = ImageDraw.Draw(img)
+    cx, cy = w // 2, h // 2
+    rx, ry = 28, 36
+
+    # faint interior so the shell encloses a volume
+    for i in range(5):
+        t = i / 4
+        d.ellipse([cx - rx * (1 - t * 0.5), cy - ry * (1 - t * 0.5),
+                   cx + rx * (1 - t * 0.5), cy + ry * (1 - t * 0.5)],
+                  fill=(120, 190, 255, int(10 + t * 12)))
+    # two rims
+    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], outline=(150, 212, 255, 120), width=2)
+    d.ellipse([cx - rx + 4, cy - ry + 5, cx + rx - 4, cy + ry - 5],
+              outline=(198, 234, 255, 70), width=1)
+    # specular highlight on the upper left, like light catching glass
+    d.arc([cx - rx + 1, cy - ry + 1, cx + rx - 1, cy + ry - 1], 200, 265,
+          fill=(240, 252, 255, 190), width=3)
+    d.arc([cx - rx + 1, cy - ry + 1, cx + rx - 1, cy + ry - 1], 20, 55,
+          fill=(210, 240, 255, 110), width=2)
+    # a few panel nodes rather than radiating scratches
+    for a in (15, 75, 135, 195, 255, 315):
+        r = math.radians(a)
+        nx, ny = cx + math.cos(r) * rx, cy + math.sin(r) * ry
+        d.ellipse([nx - 2, ny - 2, nx + 2, ny + 2], fill=(226, 246, 255, 150))
+    save(img, "shield.png")
+
 def gen_light():
     """Radial falloff used to carve a lantern-lit hole in the darkness
     overlay on the night and cave levels."""
@@ -637,6 +855,8 @@ if __name__ == "__main__":
     gen_gate()
     gen_fence()
     gen_lantern()
+    gen_armor()
+    gen_shield_bubble()
     gen_light()
     gen_particle()
     print("done")

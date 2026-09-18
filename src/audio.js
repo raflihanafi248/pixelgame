@@ -36,6 +36,7 @@ const SURFACES = {
 
 // Cinematic score: slow chord beds with an arpeggio on top, not a note grid.
 // Chords are MIDI note numbers; each entry lasts `barsPerChord` bars.
+// `gain` trims an individual theme that sits too loud against the rest.
 const MUSIC = {
   title: {
     bpm: 72, barsPerChord: 2, padWave: "sawtooth", arpWave: "triangle",
@@ -45,7 +46,7 @@ const MUSIC = {
   autumn: {
     bpm: 84, barsPerChord: 2, padWave: "sawtooth", arpWave: "triangle",
     chords: [[45, 57, 64, 69], [50, 62, 65, 69], [43, 55, 62, 67], [41, 53, 60, 65]],
-    arp: [0, 2, 3, 2, 1, 3, 2, 1], perc: null, arpVol: 0.095, padVol: 0.08,
+    arp: [0, 2, 3, 2, 1, 3, 2, 1], perc: null, arpVol: 0.095, padVol: 0.08, gain: 0.6,
   },
   night: {
     bpm: 66, barsPerChord: 2, padWave: "sawtooth", arpWave: "sine",
@@ -60,7 +61,7 @@ const MUSIC = {
   snow: {
     bpm: 58, barsPerChord: 2, padWave: "triangle", arpWave: "sine",
     chords: [[48, 60, 67, 72], [46, 58, 65, 70], [43, 55, 62, 69], [48, 60, 67, 74]],
-    arp: [3, 2, 1, 2, 3, 2, 1, 0], perc: null, arpVol: 0.09, padVol: 0.085,
+    arp: [3, 2, 1, 2, 3, 2, 1, 0], perc: null, arpVol: 0.09, padVol: 0.085, gain: 0.6,
   },
   lair: {
     bpm: 96, barsPerChord: 1, padWave: "sawtooth", arpWave: "sawtooth",
@@ -429,6 +430,32 @@ const Sound = {
         this._noise({ dur: 1.2, vol: 0.06 * v, freq: 4000, q: 0.6, type: "highpass", t0, dest: out });
         break;
       }
+      case "armorGain": {
+        const out = this._chain(place, this.sfxBus, 0.45);
+        // plate settling onto plate, then a bright ring
+        this._noise({ dur: 0.1, vol: 0.2 * v, freq: 1800, to: 500, q: 1.0, t0, dest: out });
+        this._metal({ base: rand(620, 720), partials: [1, 2.4, 4.2], dur: 0.5, vol: 0.14 * v, t0, dest: out });
+        this._metal({ base: rand(1500, 1700), partials: [1, 2.02], dur: 0.7, vol: 0.09 * v, t0: t0 + 0.07, dest: out, type: "sine" });
+        break;
+      }
+      case "armorHit": { // a hit the plate soaked up: dull, no flesh in it
+        const out = this._chain(place, this.sfxBus, 0.4);
+        this._noise({ dur: 0.05, vol: 0.3 * v, freq: 4200, q: 0.8, type: "highpass", t0, dest: out });
+        this._metal({ base: rand(760, 980), partials: [1, 2.71, 5.1], dur: 0.45, vol: 0.2 * v, t0, dest: out });
+        this._osc({ type: "sine", freq: 150, to: 62, dur: 0.14, vol: 0.16 * v, t0, dest: out });
+        break;
+      }
+      case "armorBreak": { // the plate gives way and the pieces scatter
+        const out = this._chain(place, this.sfxBus, 0.55);
+        this._noise({ dur: 0.08, vol: 0.34 * v, freq: 5200, q: 0.7, type: "highpass", t0, dest: out });
+        this._metal({ base: rand(900, 1100), partials: [1, 2.3, 3.9, 6.4], dur: 0.9, vol: 0.2 * v, t0, dest: out });
+        this._osc({ type: "sawtooth", freq: 260, to: 70, dur: 0.4, vol: 0.16 * v, t0, dest: out });
+        for (let i = 0; i < 6; i++) { // shards hitting the ground
+          this._metal({ base: rand(1400, 2600), partials: [1, 2.6], dur: 0.25,
+                        vol: 0.07 * v, t0: t0 + 0.12 + i * rand(0.04, 0.13), dest: out, type: "sine" });
+        }
+        break;
+      }
       case "select": {
         const out = this._chain(place, this.sfxBus, 0.3);
         this._metal({ base: 880, partials: [1, 2.4], dur: 0.3, vol: 0.1 * v, t0, dest: out, type: "sine" });
@@ -601,6 +628,8 @@ const Sound = {
     this._music = MUSIC[key];
     this._bar = 0;
     this._chordIdx = 0;
+    // Themes carry their own level so a loud one can be trimmed on its own.
+    this.musicBus.gain.setTargetAtTime(0.8 * (this._music.gain ?? 1), this.ctx.currentTime, 0.2);
     this._nextBarTime = this.ctx.currentTime + 0.15;
     this._musicTimer = setInterval(() => this._scheduleMusic(), 120);
     this._scheduleMusic();

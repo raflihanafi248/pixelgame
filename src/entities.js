@@ -17,6 +17,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.maxHp = 5;
     this.hp = this.maxHp;
+    this.maxArmor = 3;
+    this.armor = 0; // earned from kills, soaks up hits before health does
     this.facing = 1;
     this.state_ = "idle";
     this.invulnUntil = 0;
@@ -105,13 +107,38 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     Sound.play("dash", { x: this.x });
   }
 
+  gainArmor() {
+    if (this.dead) return;
+    const wasEmpty = this.armor === 0;
+    this.armor = this.maxArmor;
+    Sound.play("armorGain", { x: this.x });
+    this.scene.onArmorChanged(wasEmpty ? "gained" : "repaired");
+  }
+
   hurt(amount, fromX) {
     const now = this.scene.time.now;
     if (this.dead || now < this.invulnUntil) return false;
-    this.hp -= amount;
     this.queuedAttack = false;
-    this.invulnUntil = now + 950;
     const dir = this.x < fromX ? -1 : 1;
+
+    // Armour takes the blow first, and only breaks once its last plate goes.
+    if (this.armor > 0) {
+      this.armor -= 1;
+      this.invulnUntil = now + 700;
+      this.setVelocity(dir * 150, -140);
+      this.scene.cameras.main.shake(110, 0.005);
+      if (this.armor === 0) {
+        Sound.play("armorBreak", { x: this.x });
+        this.scene.onArmorChanged("broken");
+      } else {
+        Sound.play("armorHit", { x: this.x });
+        this.scene.onArmorChanged("hit");
+      }
+      return true;
+    }
+
+    this.hp -= amount;
+    this.invulnUntil = now + 950;
     this.setVelocity(dir * 200, -220);
     this.scene.cameras.main.shake(160, 0.008);
 
@@ -309,15 +336,38 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
     this.phase = "hover";
     this.nextPhaseAt = 0;
     this.nextShotAt = 0;
-    this.hoverY = 170;
-    this.groundY = GROUND_Y - 70;
+    this.hoverY = 190;
+    this.groundY = GROUND_Y - 88; // feet sit on the ground in the rest pose
     this.dir = -1;
+    this.roaring = false;
+    this.bobT = Math.random() * Math.PI * 2;
 
     this.setDepth(18);
     this.body.setAllowGravity(false);
-    this.body.setSize(120, 100);
-    this.body.setOffset(20, 40);
-    this.play("dragon-idle");
+    this.body.setSize(150, 110);
+    this.body.setOffset(50, 60);
+    this.play("dragon-fly");
+
+    // The roar animation carries the fire: the breath leaves the mouth on the
+    // frame where the jaw is fully open, not on an unrelated timer.
+    this.on("animationupdate", (anim, frame) => {
+      if (anim.key === "dragon-roar" && frame.index === 4) this.spitFire();
+    });
+    this.on("animationcomplete", (anim) => {
+      if (anim.key === "dragon-roar") {
+        this.roaring = false;
+        this.playState();
+      } else if (anim.key === "dragon-hurt" && this.alive_) {
+        this.playState();
+      }
+    });
+  }
+
+  playState() {
+    if (!this.alive_ || this.roaring) return;
+    const want = this.phase === "swoop" ? "dragon-swoop"
+      : this.phase === "rest" ? "dragon-rest" : "dragon-fly";
+    if (this.anims.currentAnim?.key !== want) this.play(want);
   }
 
   takeDamage(amount, fromX) {
@@ -328,31 +378,44 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(70, () => this.active && this.clearTint());
     this.scene.cameras.main.shake(120, 0.006);
     this.scene.updateBossBar();
-    if (this.hp <= 0) this.kill();
+    if (this.hp <= 0) {
+      this.kill();
+    } else if (!this.roaring) {
+      this.play("dragon-hurt");
+    }
   }
 
   kill() {
     if (!this.alive_) return;
     this.alive_ = false;
     this.body.enable = false;
-    this.play("dragon-hurt");
+    this.roaring = false;
+    this.setAngle(0);
+    this.play("dragon-death");
     Sound.play("bossDie", { x: this.x });
     this.scene.onBossDefeated();
   }
 
-  breathe() {
-    Sound.play("fire", { x: this.x });
+  roar() {
+    if (!this.alive_ || this.roaring) return;
+    this.roaring = true;
+    this.play("dragon-roar");
+    Sound.play("roar", { x: this.x });
+  }
+
+  spitFire() {
     const dirToPlayer = this.scene.player.x < this.x ? -1 : 1;
-    this.setFlipX(dirToPlayer > 0);
+    Sound.play("fire", { x: this.x });
     for (let i = -1; i <= 1; i++) {
-      const ball = this.scene.fireballs.get(this.x + dirToPlayer * 60, this.y + 10);
+      const ball = this.scene.fireballs.get(this.x + dirToPlayer * 90, this.y - 34);
       if (!ball) continue;
       ball.setActive(true).setVisible(true);
       ball.body.enable = true;
       ball.setDepth(19);
       ball.play("fireball-fly");
       ball.setFlipX(dirToPlayer < 0);
-      const angle = Phaser.Math.Angle.Between(this.x, this.y + 10, this.scene.player.x, this.scene.player.y);
+      const angle = Phaser.Math.Angle.Between(
+        this.x, this.y - 34, this.scene.player.x, this.scene.player.y);
       const spread = angle + i * 0.22;
       ball.setVelocity(Math.cos(spread) * 330, Math.sin(spread) * 330);
     }
@@ -361,48 +424,54 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
   tick(time, player) {
     if (!this.alive_) return;
     const hpFrac = this.hp / this.maxHp;
-    const rush = 1 + (1 - hpFrac) * 0.8; // gets faster as it weakens
+    const rush = 1 + (1 - hpFrac) * 0.8; // it fights harder as it weakens
+    const dt = this.scene.game.loop.delta / 1000;
+    this.bobT += dt * 2.2;
 
     if (time > this.nextPhaseAt) {
       if (this.phase === "hover") {
         this.phase = "swoop";
         this.nextPhaseAt = time + 1600 / rush;
         this.swoopDir = player.x < this.x ? -1 : 1;
-        this.play("dragon-attack");
-        Sound.play("roar", { x: this.x });
       } else if (this.phase === "swoop") {
         this.phase = "rest";
         this.nextPhaseAt = time + 2600 / rush;
-        this.play("dragon-idle");
       } else {
         this.phase = "hover";
         this.nextPhaseAt = time + 3200 / rush;
       }
+      this.playState();
     }
 
     if (this.phase === "hover") {
-      const targetY = this.hoverY;
+      // Buoyant drift: the sprite's own flap plus a slow world-space bob.
+      const targetY = this.hoverY + Math.sin(this.bobT) * 16;
       this.setVelocityY((targetY - this.y) * 2);
-      if (this.x < 260) this.dir = 1;
-      if (this.x > this.scene.levelWidth - 260) this.dir = -1;
+      if (this.x < 280) this.dir = 1;
+      if (this.x > this.scene.levelWidth - 280) this.dir = -1;
       this.setVelocityX(this.dir * 110 * rush);
-      this.setFlipX(this.dir > 0);
+      if (!this.roaring) this.setFlipX(this.dir > 0);
       if (time > this.nextShotAt) {
-        this.nextShotAt = time + 1500 / rush;
-        this.breathe();
+        this.nextShotAt = time + 1900 / rush;
+        this.roar();
       }
     } else if (this.phase === "swoop") {
-      this.setVelocityY((player.y - 20 - this.y) * 3);
+      this.setVelocityY((player.y - 40 - this.y) * 3);
       this.setVelocityX(this.swoopDir * 320 * rush);
       this.setFlipX(this.swoopDir > 0);
-      if (this.x < 200 || this.x > this.scene.levelWidth - 200) {
-        this.swoopDir *= -1;
-      }
+      if (this.x < 220 || this.x > this.scene.levelWidth - 220) this.swoopDir *= -1;
     } else {
-      // resting on the ground: the window where the player can safely strike
+      // Landed: the window where the player can reach it with a sword.
       this.setVelocityY((this.groundY - this.y) * 3);
       this.setVelocityX(this.body.velocity.x * 0.9);
       this.setFlipX(player.x > this.x);
     }
+
+    // Pitch into the dive and level out again, so it banks like something
+    // with weight rather than sliding around upright.
+    const wantAngle = this.phase === "swoop"
+      ? Phaser.Math.Clamp(this.body.velocity.y * 0.02, -16, 16) * (this.flipX ? 1 : -1)
+      : 0;
+    this.setAngle(Phaser.Math.Linear(this.angle, wantAngle, 0.12));
   }
 }
