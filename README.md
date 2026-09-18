@@ -30,14 +30,15 @@ Then open `http://localhost:8080`.
 | `W` / `↑` / `SPACE` | Jump (hold for a higher jump) |
 | `J` or `X` | Attack — three-hit sword combo, air attack while jumping |
 | `SHIFT` or `L` | Dash (brief invulnerability) |
-| `E` | Talk to the person you are standing next to |
+| `E` | Talk to the person you are standing next to, or open a merchant's stall |
+| `↑` `↓` / `ENTER` / `Q` | In the market: choose, buy, leave |
 | `M` | Sound on / off |
 | `F` | Fullscreen on / off |
 | `ENTER` | Continue on the title and story screens |
 
 ## Levels
 
-1. **The Autumn Wood** — a gentle opening in a golden-hour valley: goblins, slimes, wolves.
+1. **The Autumn Wood** — the long opening chapter, 8800px of golden-hour valley across five pits and six checkpoints. It starts gently with slimes and goblins and keeps adding to the roster as you go east: wolves, bats, and finally wraiths. Two of Odrin's market stalls sit on the road.
 2. **The Misted Nightwood** — dark, barely any sight line, wraiths start to appear.
 3. **The Crystal Cave** — tiered platforming, bats, spikes.
 4. **The Frozen Peak** — slippery footing and ice wolves.
@@ -54,6 +55,7 @@ What they tell you is the plot the chapter cards only hint at:
 - **The Wisp**, in the nightwood, was a warden once too — and points you at the stone beneath the roots.
 - **Gethin** reads the cave reliefs: a dragon gave up its fire so the valley could grow, men swore to guard it, and the last panel was chiselled away.
 - **Yvane**, freezing on the peak, reached the lair first. The dragon let her go, and asked her a question she could not answer.
+- **Odrin the Pedlar** has set his stall up in the middle of the emptying forest, because everyone is running east past him and that is the best road he has had in years. Talk to him once and he introduces himself; after that, `E` goes straight to the stall.
 
 ## Audio
 
@@ -72,8 +74,23 @@ Every sound is synthesised live through the Web Audio API — there is not a sin
 - **Health and lives** — 5 hearts, 3 lives, brief invulnerability after a hit.
 - **Armour** — every enemy you defeat grants three plates of armour. While it holds (a shell around the knight, three shield pips in the HUD) hits land on the armour instead of your health. The third hit shatters it; defeat another enemy to earn it back. Pits stay lethal — armour will not save you there.
 - **Checkpoints** — stone lanterns along the way; dying returns you to the last one.
-- **Crystals** — collected for score along the route, and defeating enemies adds to it too.
-- **Pits** — falling costs a life.
+- **Crystals** — the game's currency. You pick them up along the route and earn them for defeating enemies, and you spend them at a merchant.
+- **The wolf** — a companion runs the whole game with you. It heels a little behind, breaks off to hunt anything that comes within reach of you, bites on its own, and yelps and limps back to your side when it is hurt. It cannot be killed; it just needs a moment to recover.
+- **Pits** — falling costs a life, **and 25 crystals**. They burst out of you and scatter across the ground where you fell, so you watch the loss happen.
+
+## The market
+
+Odrin's stalls sell timed abilities for crystals. Buffs survive a death and a change of chapter, and buying one that is still running extends it rather than restarting it. The HUD shows a countdown for each one you have.
+
+| Ability | Cost | Lasts | Effect |
+| --- | --- | --- | --- |
+| Whetstone | 30 | 45s | Your sword does double damage |
+| Swiftness Draught | 25 | 45s | Run faster, dash further |
+| Warden's Ward | 35 | 60s | Armour refills now and holds five hits instead of three |
+| Ember Flask | 40 | 45s | Every connecting swing bursts into everything within 180px |
+| Heart of Oak | 20 | — | Restores two hearts on the spot |
+
+Heart of Oak refuses the sale (and keeps your crystals) if you are already at full health.
 
 ## Cheat code
 
@@ -86,7 +103,8 @@ index.html           the game page
 src/levels.js        the five levels, their story text and every conversation
 src/audio.js         audio engine (music, effects, ambience, reverb)
 src/dialogue.js      the conversation box and the NPCs who use it
-src/entities.js      Player (combo, dash, health), Enemy, Dragon (boss)
+src/entities.js      Player (combo, dash, health), Enemy, Dragon (boss), Companion (the wolf)
+src/market.js        the abilities, the buff timers and the stall UI
 src/scenes.js        boot, title, story cards, gameplay, game over, ending
 src/main.js          Phaser configuration
 src/assets_data.js   every asset as base64 (generated - do not hand-edit)

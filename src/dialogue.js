@@ -141,7 +141,7 @@ class Npc extends Phaser.Physics.Arcade.Sprite {
       yoyo: true, repeat: -1, ease: "Sine.inOut",
     });
 
-    this.prompt = scene.add.text(this.x, this.y - 40, "E  talk", {
+    this.prompt = scene.add.text(this.x, this.y - 40, def.shop ? "E  trade" : "E  talk", {
       fontFamily: FONT, fontSize: "13px", color: "#f3e7d2",
       backgroundColor: "#0b0810cc", padding: { x: 6, y: 3 },
     }).setOrigin(0.5).setDepth(30).setVisible(false);

@@ -11,6 +11,7 @@ const GameState = {
     this.score = 0;
     this.lives = 3;
     this.checkpointX = null;
+    Buffs.clear();
   },
 };
 
@@ -101,11 +102,15 @@ class BootScene extends Phaser.Scene {
     this.load.spritesheet("heart", ASSET_DATA.heart, { frameWidth: 32, frameHeight: 28 });
     this.load.spritesheet("armor", ASSET_DATA.armor, { frameWidth: 30, frameHeight: 32 });
     this.load.image("shield", ASSET_DATA.shield);
-    for (const npc of ["maren", "bram", "gethin", "yvane", "wisp"]) {
+    for (const npc of ["maren", "bram", "gethin", "yvane", "wisp", "merchant"]) {
       this.load.spritesheet(`npc_${npc}`, ASSET_DATA[`npc_${npc}`], { frameWidth: 64, frameHeight: 80 });
       this.load.image(`portrait_${npc}`, ASSET_DATA[`portrait_${npc}`]);
     }
     this.load.image("portrait_knight", ASSET_DATA.portrait_knight);
+    this.load.spritesheet("companion", ASSET_DATA.companion, { frameWidth: 96, frameHeight: 64 });
+    for (const icon of ["whet", "swift", "ward", "ember", "heart"]) {
+      this.load.image(`icon_${icon}`, ASSET_DATA[`icon_${icon}`]);
+    }
     this.load.spritesheet("checkpoint", ASSET_DATA.checkpoint, { frameWidth: 52, frameHeight: 88 });
   }
 
@@ -149,12 +154,16 @@ class BootScene extends Phaser.Scene {
     A.create({ key: "dragon-death", frames: A.generateFrameNumbers("dragon", { start: 18, end: 21 }), frameRate: 5 });
     A.create({ key: "dragon-rest", frames: A.generateFrameNumbers("dragon", { start: 22, end: 23 }), frameRate: 1.6, repeat: -1 });
     A.create({ key: "fireball-fly", frames: A.generateFrameNumbers("fireball", { start: 0, end: 1 }), frameRate: 10, repeat: -1 });
-    for (const npc of ["maren", "bram", "gethin", "yvane"]) {
+    for (const npc of ["maren", "bram", "gethin", "yvane", "merchant"]) {
       A.create({ key: `npc-${npc}`, frames: A.generateFrameNumbers(`npc_${npc}`, { start: 0, end: 1 }),
                  frameRate: 2, repeat: -1 });
     }
     A.create({ key: "npc-wisp", frames: A.generateFrameNumbers("npc_wisp", { start: 0, end: 3 }),
                frameRate: 6, repeat: -1 });
+    A.create({ key: "dog-idle", frames: A.generateFrameNumbers("companion", { start: 0, end: 1 }), frameRate: 2, repeat: -1 });
+    A.create({ key: "dog-run", frames: A.generateFrameNumbers("companion", { start: 2, end: 5 }), frameRate: 13, repeat: -1 });
+    A.create({ key: "dog-attack", frames: A.generateFrameNumbers("companion", { start: 6, end: 7 }), frameRate: 12 });
+    A.create({ key: "dog-hurt", frames: A.generateFrameNumbers("companion", { start: 8, end: 8 }), frameRate: 3 });
     A.create({ key: "crystal-spin", frames: A.generateFrameNumbers("crystal", { start: 0, end: 3 }), frameRate: 8, repeat: -1 });
 
     this.scene.start("title");
@@ -195,7 +204,7 @@ class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 });
 
     this.add.text(GAME_W / 2, 340,
-      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)      SHIFT   dash\nE   talk to people            M   sound on / off\nF   fullscreen\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits",
+      "A / D  or  ←  →   move\nW / ↑ / SPACE   jump (hold to jump higher)\nJ   attack (3-hit combo)      SHIFT   dash\nE   talk / trade      M   sound on / off      F   fullscreen\n\nDefeat an enemy to earn ARMOUR — it soaks up 3 hits\nSpend crystals at a merchant. Fall, and you drop 25 of them.\nThe wolf hunts beside you and cannot be killed.",
       { fontFamily: FONT, fontSize: "14px", color: "#dccab4", align: "center",
         lineSpacing: 6, stroke: "#1c1108", strokeThickness: 3 }
     ).setOrigin(0.5);
@@ -419,16 +428,27 @@ class GameScene extends Phaser.Scene {
     this.shieldFx = this.add.image(this.player.x, this.player.y, "shield")
       .setDepth(21).setVisible(false);
 
-    this.dialogue = new DialogueBox(this);
-    this.npcs = (this.level.npcs || []).map((def) => new Npc(this, def));
-    this.events.once("shutdown", () => this.npcs.forEach((n) => n.destroyExtras()));
-
+    // The enemy group must exist before anything collides with it: this scene
+    // instance is reused between levels, so a collider registered against a
+    // stale `this.enemies` would point at the previous run's destroyed group.
     this.enemies = this.add.group();
     for (const e of this.level.enemies || []) {
       const cfg = ENEMY_TYPES[e.type];
       const y = cfg.flying ? GROUND_Y - 180 : GROUND_Y - 60;
       this.enemies.add(new Enemy(this, e.type, e.x, y));
     }
+
+    this.wolf = new Companion(this, this.spawnX - 70, GROUND_Y - 120);
+    this.physics.add.collider(this.wolf, this.ground);
+    this.physics.add.collider(this.wolf, this.platforms);
+    this.physics.add.overlap(this.wolf, this.enemies, (dog, en) => {
+      if (en.alive_) dog.hurtBy(en, this.time.now);
+    });
+
+    this.market = new Market(this);
+    this.dialogue = new DialogueBox(this);
+    this.npcs = (this.level.npcs || []).map((def) => new Npc(this, def));
+    this.events.once("shutdown", () => this.npcs.forEach((n) => n.destroyExtras()));
 
     this.fireballs = this.physics.add.group({ allowGravity: false, maxSize: 24 });
 
@@ -483,10 +503,21 @@ class GameScene extends Phaser.Scene {
       this.hearts.push(h);
     }
     this.armorPips = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {   // the Ward buff widens the bar to five
       this.armorPips.push(this.add.image(206 + i * 26, 26, "armor", 1)
-        .setScrollFactor(0).setDepth(60));
+        .setScrollFactor(0).setDepth(60).setVisible(false));
     }
+    // Active abilities, shown as icon + seconds remaining.
+    this.buffSlots = Object.keys(ABILITIES).filter((key) => ABILITIES[key].seconds)
+      .map((key, i) => ({
+        key,
+        icon: this.add.image(28 + i * 62, 96, ABILITIES[key].icon)
+          .setScale(0.62).setScrollFactor(0).setDepth(60).setVisible(false),
+        text: this.add.text(44 + i * 62, 88, "", {
+          fontFamily: FONT, fontSize: "13px", color: "#cfe9f2",
+          stroke: "#08131a", strokeThickness: 3,
+        }).setScrollFactor(0).setDepth(61).setVisible(false),
+      }));
     this.livesText = this.add.text(24, 54, "", {
       fontFamily: FONT, fontSize: "15px", color: "#e8dccb",
     }).setScrollFactor(0).setDepth(60);
@@ -520,7 +551,23 @@ class GameScene extends Phaser.Scene {
   refreshHud() {
     this.godText?.setVisible(GameState.godMode);
     this.hearts.forEach((h, i) => h.setFrame(i < this.player.hp ? 0 : 1));
-    this.armorPips.forEach((p, i) => p.setFrame(i < this.player.armor ? 0 : 1));
+    const maxArmor = this.player.maxArmor;
+    this.armorPips.forEach((p, i) => {
+      p.setVisible(i < maxArmor);
+      p.setFrame(i < this.player.armor ? 0 : 1);
+    });
+    // Live buffs pack to the left, so one buff never floats in the middle.
+    let slotIndex = 0;
+    this.buffSlots.forEach((slot) => {
+      const left = Buffs.remaining(slot.key);
+      slot.icon.setVisible(left > 0);
+      slot.text.setVisible(left > 0).setText(left > 0 ? `${left}s` : "");
+      if (left > 0) {
+        slot.icon.setX(28 + slotIndex * 62);
+        slot.text.setX(44 + slotIndex * 62);
+        slotIndex += 1;
+      }
+    });
     this.livesText.setText(`LIVES x${GameState.lives}`);
     this.scoreText.setText(`CRYSTALS  ${GameState.score}`);
   }
@@ -538,6 +585,7 @@ class GameScene extends Phaser.Scene {
       left: K.A, right: K.D, up: K.W, jump: K.SPACE,
       attack: K.J, attack2: K.X, dash: K.SHIFT, dash2: K.L,
       talk: K.E, enter: K.ENTER,
+      down: K.S, quit: K.Q, esc: K.ESC,
     });
   }
 
@@ -571,6 +619,7 @@ class GameScene extends Phaser.Scene {
   // Sword hit: a box in front of the player, checked on the swing's active frames.
   playerHitCheck(player) {
     const reach = 92;
+    const damage = Buffs.has("whet") ? 2 : 1;
     const box = new Phaser.Geom.Rectangle(
       player.facing > 0 ? player.x : player.x - reach,
       player.y - 50, reach, 96
@@ -580,13 +629,13 @@ class GameScene extends Phaser.Scene {
     this.enemies.getChildren().forEach((en) => {
       if (!en.alive_) return;
       if (Phaser.Geom.Rectangle.Overlaps(box, en.getBounds())) {
-        en.takeDamage(1, player.x);
+        en.takeDamage(damage, player.x);
         hitSomething = true;
       }
     });
     if (this.boss && this.boss.alive_ &&
         Phaser.Geom.Rectangle.Overlaps(box, this.boss.getBounds())) {
-      this.boss.takeDamage(1, player.x);
+      this.boss.takeDamage(damage, player.x);
       hitSomething = true;
     }
     this.fireballs.getChildren().forEach((ball) => {
@@ -595,6 +644,19 @@ class GameScene extends Phaser.Scene {
         hitSomething = true;
       }
     });
+
+    // Ember Flask: the swing throws heat into everything close by.
+    if (hitSomething && Buffs.has("ember")) {
+      this.enemies.getChildren().forEach((en) => {
+        if (en.alive_ && Phaser.Math.Distance.Between(en.x, en.y, player.x, player.y) < 180) {
+          en.takeDamage(1, player.x);
+        }
+      });
+      const burst = this.add.image(player.x, player.y - 10, "particle")
+        .setTint(0xff9a3c).setScale(5).setDepth(29);
+      this.tweens.add({ targets: burst, alpha: 0, scale: 16, duration: 280,
+                        onComplete: () => burst.destroy() });
+    }
 
     if (hitSomething) {
       this.cameras.main.shake(90, 0.005);
@@ -652,12 +714,50 @@ class GameScene extends Phaser.Scene {
   }
 
   onPlayerDeath() {
-    this.cameras.main.fade(600, 0, 0, 0);
-    this.time.delayedCall(640, () => {
+    this.spillCrystals(DEATH_PENALTY);
+    // Hold the camera long enough to watch the crystals bounce away before
+    // the screen goes: the loss is meant to be seen, not just tallied.
+    this.time.delayedCall(850, () => this.cameras.main.fade(600, 0, 0, 0));
+    this.time.delayedCall(1500, () => {
       GameState.lives -= 1;
       if (GameState.lives <= 0) this.scene.start("gameover");
       else this.scene.restart();
     });
+  }
+
+  // Crystals burst out of the knight and scatter across the ground: the loss
+  // is something you see happen, not just a number that drops.
+  spillCrystals(amount) {
+    const lost = Math.min(amount, GameState.score);
+    GameState.score -= lost;
+    this.refreshHud();
+    if (lost <= 0) return;
+    Sound.play("crystalDrop", { x: this.player.x });
+
+    const count = Math.min(14, Math.max(5, Math.round(lost / 2)));
+    for (let i = 0; i < count; i++) {
+      const gem = this.physics.add.sprite(
+        this.player.x + Phaser.Math.Between(-14, 14),
+        this.player.y - 26, "crystal");
+      gem.play("crystal-spin");
+      gem.setDepth(28).setScale(0.85);
+      gem.body.setAllowGravity(true);
+      gem.setVelocity(Phaser.Math.Between(-260, 260), Phaser.Math.Between(-430, -240));
+      gem.setBounce(0.45);
+      gem.setDragX(160);
+      // Drop the collider with the gem, or it outlives it and trips physics.
+      const floor = this.physics.add.collider(gem, this.ground);
+      this.tweens.add({
+        targets: gem, alpha: 0, delay: 900, duration: 700,
+        onComplete: () => { this.physics.world.removeCollider(floor); gem.destroy(); },
+      });
+    }
+    const label = this.add.text(this.player.x, this.player.y - 70, `-${lost}`, {
+      fontFamily: FONT, fontSize: "22px", color: "#8fd9e8",
+      stroke: "#0a1a20", strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(40);
+    this.tweens.add({ targets: label, y: label.y - 54, alpha: 0, duration: 1200,
+                      onComplete: () => label.destroy() });
   }
 
   onBossDefeated() {
@@ -690,6 +790,23 @@ class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------- frame loop
   update(time) {
+    // The market owns the keyboard while it is open.
+    if (this.market.open) {
+      this.player.setVelocityX(0);
+      this.player.play("hero-idle", true);
+      this.player.invulnUntil = Math.max(this.player.invulnUntil, time + 200);
+      this.enemies.getChildren().forEach((en) => en.setVelocity(0, 0));
+      const k = this.keys, c = this.cursors;
+      if (Phaser.Input.Keyboard.JustDown(c.up) || Phaser.Input.Keyboard.JustDown(k.up)) this.market.move(-1);
+      if (Phaser.Input.Keyboard.JustDown(c.down) || Phaser.Input.Keyboard.JustDown(k.down)) this.market.move(1);
+      if (Phaser.Input.Keyboard.JustDown(k.enter)) this.market.buy();
+      if (Phaser.Input.Keyboard.JustDown(k.quit) || Phaser.Input.Keyboard.JustDown(k.esc)) {
+        this.market.hide();
+      }
+      this.refreshHud();
+      return;
+    }
+
     // A conversation freezes play: the knight stops, enemies hold still, and
     // the only input that does anything is "continue".
     if (this.dialogue.active) {
@@ -709,9 +826,21 @@ class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.keys.talk)) {
       const who = this.npcs.find((n) => n.inRange(this.player));
       if (who) {
-        Sound.play("select", { x: who.x });
         this.player.setVelocity(0, 0);
-        this.dialogue.start(who.conversation());
+        if (who.def.shop) {
+          // A merchant greets you once, then it is straight to the stall.
+          if (!who.talked && who.def.lines) {
+            who.talked = true;
+            Sound.play("select", { x: who.x });
+            this.dialogue.start(who.def.lines, () => this.market.show());
+          } else {
+            who.talked = true;
+            this.market.show();
+          }
+        } else {
+          Sound.play("select", { x: who.x });
+          this.dialogue.start(who.conversation());
+        }
         return;
       }
     }
@@ -733,6 +862,7 @@ class GameScene extends Phaser.Scene {
     }
     this.player.handleInput(input);
 
+    this.wolf.tick(time, this.player, this.enemies.getChildren());
     this.enemies.getChildren().forEach((en) => en.tick(this.player));
     if (this.boss) this.boss.tick(time, this.player);
 

@@ -840,6 +840,12 @@ NPCS = {
         "cloth": (74, 66, 102), "cloth_hi": (100, 92, 136), "cloth_sh": (50, 44, 72),
         "trim": (190, 176, 220), "prop": "scroll", "hood": True,
     },
+    "merchant": {  # runs the roadside market
+        "skin": (214, 168, 126), "skin_sh": (180, 136, 98),
+        "hair": (72, 54, 38), "hair_sh": (48, 36, 26),
+        "cloth": (128, 64, 52), "cloth_hi": (162, 92, 72), "cloth_sh": (92, 44, 36),
+        "trim": (230, 190, 92), "prop": "pack", "hood": False,
+    },
     "yvane": {   # a warden freezing on the peak
         "skin": (218, 192, 172), "skin_sh": (184, 156, 138),
         "hair": (236, 232, 222), "hair_sh": (196, 192, 186),
@@ -888,6 +894,13 @@ def npc_frame(pal, bob=0, arm=0):
         d.line([(cx + 10, 10 + y), (cx + 10, 36)], fill=(104, 72, 44), width=2)
         d.polygon([(cx + 10, 10 + y), (cx + 18, 12 + y), (cx + 10, 20 + y)], fill=(178, 182, 190))
         d.polygon([(cx + 10, 11 + y), (cx + 15, 13 + y), (cx + 10, 17 + y)], fill=(214, 220, 228))
+    elif pal["prop"] == "pack":
+        d.rectangle([cx - 17, 20 + y, cx - 7, 32 + y], fill=(112, 78, 46))
+        d.rectangle([cx - 17, 20 + y, cx - 7, 22 + y], fill=(146, 106, 66))
+        d.line([(cx - 17, 26 + y), (cx - 7, 26 + y)], fill=(70, 48, 28))
+        d.rectangle([cx - 14, 16 + y, cx - 10, 20 + y], fill=(70, 48, 28))
+        d.ellipse([cx - 16, 12 + y, cx - 11, 17 + y], fill=(90, 210, 230))   # wares on top
+        d.ellipse([cx - 12, 14 + y, cx - 8, 18 + y], fill=(240, 190, 80))
     elif pal["prop"] == "scroll":
         d.rectangle([cx - 15, 22 + y, cx - 7, 28 + y], fill=(226, 212, 176))
         d.rectangle([cx - 15, 22 + y, cx - 7, 23 + y], fill=(188, 170, 134))
@@ -994,6 +1007,130 @@ def gen_npcs():
     gen_wisp()
     gen_knight_portrait()
 
+# ==================================================================== COMPANION
+# The knight's wolf: warmer fur than the enemy wolves and a collar, so at a
+# glance you can tell your animal from theirs.
+C_W, C_H = 48, 32
+CF_DARK = (86, 66, 48)
+CF_MID = (134, 106, 74)
+CF_LIGHT = (176, 146, 106)
+CF_BELLY = (208, 186, 150)
+C_COLLAR = (150, 48, 42)
+C_TAG = (238, 196, 88)
+C_EYE = (232, 190, 74)
+
+def companion_frame(legs=(0, 0, 0, 0), bob=0, head=0, jaw=0, tail=0, hurt=False):
+    img = canvas(C_W, C_H)
+    d = ImageDraw.Draw(img)
+    y = bob
+
+    # tail, drawn first so the body overlaps its root
+    tx, ty = 6 - tail, 12 + y - abs(tail)
+    d.line([(14, 16 + y), (tx, ty)], fill=CF_MID, width=5)
+    d.line([(14, 16 + y), (tx, ty)], fill=CF_LIGHT, width=2)
+    d.ellipse([tx - 3, ty - 3, tx + 3, ty + 3], fill=CF_LIGHT)
+
+    # hind and fore legs
+    for i, (lx, off) in enumerate([(16, legs[0]), (20, legs[1]), (30, legs[2]), (34, legs[3])]):
+        shade = CF_DARK if i % 2 == 0 else CF_MID
+        d.line([(lx, 20 + y), (lx + off, 30)], fill=shade, width=4)
+        d.ellipse([lx + off - 3, 28, lx + off + 2, 31], fill=CF_DARK)
+
+    # body
+    d.ellipse([12, 11 + y, 36, 23 + y], fill=CF_MID)
+    d.ellipse([12, 11 + y, 34, 17 + y], fill=CF_LIGHT)
+    d.ellipse([16, 17 + y, 34, 23 + y], fill=CF_BELLY)
+
+    # neck and head
+    hx, hy = 38, 9 + y - head
+    d.line([(32, 14 + y), (hx, hy + 3)], fill=CF_MID, width=8)
+    d.ellipse([hx - 6, hy - 4, hx + 7, hy + 8], fill=CF_MID)
+    d.ellipse([hx - 6, hy - 4, hx + 4, hy + 2], fill=CF_LIGHT)
+    d.polygon([(hx - 4, hy - 3), (hx - 6, hy - 10), (hx + 1, hy - 4)], fill=CF_MID)   # ears
+    d.polygon([(hx + 2, hy - 3), (hx + 4, hy - 10), (hx + 7, hy - 3)], fill=CF_DARK)
+    d.polygon([(hx + 5, hy + 1), (hx + 13, hy + 3 + jaw), (hx + 5, hy + 6)], fill=CF_MID)  # muzzle
+    d.ellipse([hx + 11, hy + 2 + jaw, hx + 13, hy + 4 + jaw], fill=(40, 30, 26))           # nose
+    if jaw:
+        d.polygon([(hx + 5, hy + 4), (hx + 12, hy + 6 + jaw), (hx + 5, hy + 7)], fill=(70, 26, 28))
+        for t in range(6, 11, 3):
+            d.line([(hx + t, hy + 4), (hx + t, hy + 6)], fill=(245, 240, 228))
+    d.ellipse([hx + 1, hy, hx + 4, hy + 3], fill=C_EYE)
+    d.point((hx + 2, hy + 1), fill=(30, 22, 20))
+
+    # collar
+    d.line([(hx - 6, hy + 5), (hx - 1, hy + 9)], fill=C_COLLAR, width=3)
+    d.ellipse([hx - 4, hy + 8, hx - 1, hy + 11], fill=C_TAG)
+
+    if hurt:
+        overlay = Image.new("RGBA", (C_W, C_H), (255, 90, 80, 120))
+        img = Image.alpha_composite(
+            img, Image.composite(overlay, Image.new("RGBA", (C_W, C_H), (0, 0, 0, 0)), img.split()[3]))
+    return img
+
+def gen_companion():
+    frames = []
+    frames.append(companion_frame(bob=0, tail=0))                       # 0 idle
+    frames.append(companion_frame(bob=1, tail=1, head=1))               # 1 idle
+    # a four-beat gallop: gather, push, extend, land
+    frames.append(companion_frame(legs=(3, 1, -2, -4), bob=-1, head=1, tail=2))   # 2 run
+    frames.append(companion_frame(legs=(1, -2, 2, 4), bob=1, tail=1))             # 3
+    frames.append(companion_frame(legs=(-3, -1, 4, 2), bob=-2, head=2, tail=2))   # 4
+    frames.append(companion_frame(legs=(-1, 2, -1, -3), bob=0, tail=0))           # 5
+    frames.append(companion_frame(legs=(4, 2, -4, -2), bob=-3, head=3, jaw=2, tail=3))  # 6 lunge
+    frames.append(companion_frame(legs=(2, 4, -2, -4), bob=-1, head=2, jaw=3, tail=2))  # 7 bite
+    frames.append(companion_frame(legs=(0, 0, 0, 0), bob=2, head=-3, tail=-2, hurt=True))  # 8 yelp
+    sheet_of(frames, C_W, C_H, "companion.png")
+    print("  companion: idle 0-1, run 2-5, attack 6-7, hurt 8")
+
+# ==================================================================== ABILITY ICONS
+def gen_ability_icons():
+    """Market wares. Each icon is read at 48px on screen, so they lean on one
+    strong silhouette rather than detail."""
+    size = 24
+
+    def frame(bg):
+        img = canvas(size, size)
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle([0, 0, size - 1, size - 1], radius=4, fill=(26, 22, 30))
+        d.rounded_rectangle([1, 1, size - 2, size - 2], radius=4, fill=bg)
+        return img, d
+
+    img, d = frame((58, 62, 74))                                  # whetstone: sharper sword
+    d.polygon([(7, 18), (17, 6), (19, 8), (9, 20)], fill=(214, 220, 232))
+    d.polygon([(7, 18), (17, 6), (18, 7), (8, 19)], fill=(250, 252, 255))
+    d.line([(5, 20), (9, 16)], fill=(180, 140, 70), width=3)
+    for i in range(3):
+        d.line([(14 + i * 2, 4 + i), (16 + i * 2, 2 + i)], fill=(255, 246, 190))
+    save(img, "icon_whet.png")
+
+    img, d = frame((44, 68, 58))                                  # swiftness draught
+    d.polygon([(9, 6), (15, 6), (15, 10), (18, 20), (6, 20), (9, 10)], fill=(126, 226, 168))
+    d.polygon([(9, 13), (15, 13), (18, 20), (6, 20)], fill=(70, 190, 126))
+    d.rectangle([9, 3, 15, 6], fill=(150, 120, 80))
+    d.line([(11, 15), (13, 18)], fill=(214, 255, 232))
+    save(img, "icon_swift.png")
+
+    img, d = frame((48, 60, 86))                                  # warden's ward
+    d.polygon([(12, 3), (20, 7), (20, 13), (12, 21), (4, 13), (4, 7)], fill=(188, 198, 214))
+    d.polygon([(12, 5), (18, 8), (18, 13), (12, 19), (6, 13), (6, 8)], fill=(96, 138, 192))
+    d.line([(12, 7), (12, 17)], fill=(226, 240, 255))
+    d.line([(8, 11), (16, 11)], fill=(226, 240, 255))
+    save(img, "icon_ward.png")
+
+    img, d = frame((84, 46, 34))                                  # ember flask
+    d.ellipse([6, 9, 18, 21], fill=(226, 92, 36))
+    d.ellipse([8, 12, 16, 20], fill=(255, 158, 54))
+    d.ellipse([10, 15, 14, 19], fill=(255, 232, 160))
+    d.polygon([(12, 2), (16, 9), (8, 9)], fill=(255, 176, 66))
+    save(img, "icon_ember.png")
+
+    img, d = frame((86, 40, 50))                                  # heart of oak
+    d.ellipse([4, 6, 12, 14], fill=(226, 64, 74))
+    d.ellipse([11, 6, 19, 14], fill=(226, 64, 74))
+    d.polygon([(4, 11), (19, 11), (12, 20)], fill=(226, 64, 74))
+    d.ellipse([6, 8, 9, 11], fill=(255, 150, 148))
+    save(img, "icon_heart.png")
+
 def gen_light():
     """Radial falloff used to carve a lantern-lit hole in the darkness
     overlay on the night and cave levels."""
@@ -1042,6 +1179,8 @@ if __name__ == "__main__":
     gen_fence()
     gen_lantern()
     gen_npcs()
+    gen_companion()
+    gen_ability_icons()
     gen_armor()
     gen_shield_bubble()
     gen_light()

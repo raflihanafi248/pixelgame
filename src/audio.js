@@ -456,6 +456,79 @@ const Sound = {
         }
         break;
       }
+      case "bark": { // the companion calling: two short barks, throat then air
+        const out = this._chain(place, this.sfxBus, 0.4);
+        for (const [dly, f] of [[0, rand(320, 400)], [0.16, rand(280, 350)]]) {
+          this._osc({ type: "sawtooth", freq: f, to: f * 0.45, dur: 0.11,
+                      vol: 0.22 * v, t0: t0 + dly, dest: out, curve: "linear" });
+          this._noise({ dur: 0.09, vol: 0.16 * v, freq: 1400, to: 500, q: 1.1,
+                        t0: t0 + dly, dest: out });
+        }
+        break;
+      }
+      case "growl": {
+        const out = this._chain(place, this.sfxBus, 0.35);
+        this._osc({ type: "sawtooth", freq: rand(90, 110), to: 62, dur: 0.7,
+                    vol: 0.16 * v, t0, dest: out, curve: "linear" });
+        this._noise({ dur: 0.7, vol: 0.12 * v, freq: 360, to: 180, q: 3,
+                      t0, dest: out });
+        break;
+      }
+      case "bite": {
+        const out = this._chain(place, this.sfxBus, 0.3);
+        this._noise({ dur: 0.05, vol: 0.26 * v, freq: 3400, to: 900, q: 0.9, t0, dest: out });
+        this._noise({ dur: 0.13, vol: 0.2 * v, freq: 500, to: 160, q: 0.9,
+                      type: "lowpass", t0: t0 + 0.01, dest: out });
+        this._metal({ base: rand(1300, 1700), partials: [1, 2.3], dur: 0.1,
+                      vol: 0.05 * v, t0, dest: out });
+        break;
+      }
+      case "yelp": {
+        const out = this._chain(place, this.sfxBus, 0.4);
+        this._osc({ type: "sawtooth", freq: rand(520, 620), to: 240, dur: 0.3,
+                    vol: 0.2 * v, t0, dest: out });
+        this._noise({ dur: 0.2, vol: 0.1 * v, freq: 1800, to: 700, q: 2, t0, dest: out });
+        break;
+      }
+      case "shopOpen": {
+        const out = this._chain(place, this.sfxBus, 0.5);
+        this._noise({ dur: 0.3, vol: 0.12 * v, freq: 900, to: 2600, q: 0.8, t0, dest: out });
+        [523, 659, 880].forEach((f, i) =>
+          this._metal({ base: f, partials: [1, 2.01], dur: 0.6, vol: 0.1 * v,
+                        t0: t0 + i * 0.06, dest: out, type: "sine" }));
+        break;
+      }
+      case "buy": { // coins changing hands
+        const out = this._chain(place, this.sfxBus, 0.45);
+        for (let i = 0; i < 4; i++) {
+          this._metal({ base: rand(1700, 2600), partials: [1, 2.4], dur: 0.3,
+                        vol: 0.09 * v, t0: t0 + i * rand(0.03, 0.08), dest: out, type: "sine" });
+        }
+        this._osc({ type: "sine", freq: 660, to: 990, dur: 0.18, vol: 0.1 * v, t0, dest: out });
+        break;
+      }
+      case "deny": {
+        const out = this._chain(place, this.sfxBus, 0.3);
+        this._osc({ type: "square", freq: 220, to: 150, dur: 0.18, vol: 0.16 * v, t0, dest: out });
+        break;
+      }
+      case "crystalDrop": { // the handful you lose when you fall
+        const out = this._chain(place, this.sfxBus, 0.5);
+        for (let i = 0; i < 9; i++) {
+          this._metal({ base: rand(900, 2100), partials: [1, 2.02, 3.1], dur: 0.45,
+                        vol: 0.07 * v, t0: t0 + i * rand(0.02, 0.09), dest: out, type: "sine" });
+        }
+        this._osc({ type: "sine", freq: 300, to: 110, dur: 0.5, vol: 0.12 * v, t0, dest: out });
+        break;
+      }
+      case "buff": { // an ability coming online
+        const out = this._chain(place, this.sfxBus, 0.55);
+        [392, 523, 659, 784].forEach((f, i) =>
+          this._osc({ type: "triangle", freq: f, dur: 0.5, vol: 0.12 * v,
+                      t0: t0 + i * 0.07, dest: out }));
+        this._noise({ dur: 0.5, vol: 0.07 * v, freq: 5000, q: 0.7, type: "highpass", t0, dest: out });
+        break;
+      }
       case "talk": {
         const out = this._chain(place, this.sfxBus, 0.12);
         this._osc({ type: "square", freq: rand(420, 560), dur: 0.035,
