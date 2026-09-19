@@ -21,6 +21,9 @@ const DEATH_PENALTY = 25;
 const kn = (text) => ({ speaker: "Knight", portrait: "knight", text });
 const say = (speaker, portrait) => (text) => ({ speaker, portrait, text });
 
+// The six with a `voice` are the ones the dragon is listening for: each holds
+// a piece of what the order did, and it can tell whether you heard them.
+//
 // Helper: someone who lives here. They have no lines - they walk their patch,
 // watch you go by, and run when something with teeth turns up.
 const folk = (id, x, spread = 90) =>
@@ -102,9 +105,14 @@ const LEVELS = [
       { x: 7520, kind: "market", span: 460 },
     ],
     torches: [1500, 3500, 5700, 8400],
+    // Deep in the middle of the long chapter, under a bush on open ground.
+    // It was behind the spawn point at first, which sounded clever until the
+    // chime gave it away in the first second of the game, before the player
+    // had done anything to earn it.
+    shard: { x: 6500, y: GROUND_Y - 20, cover: "prop_bush_autumn_0" },
     npcs: [
       {
-        id: "maren", x: 520, name: "Elder Maren",
+        id: "maren", voice: "maren", x: 520, name: "Elder Maren",
         lines: [
           say("Elder Maren", "maren")("You came. I had started to think no one would."),
           kn("The lanterns are out, elder. Every one, from the ridge down to the river."),
@@ -125,7 +133,7 @@ const LEVELS = [
         ],
       },
       {
-        id: "bram", x: 4900, name: "Bram",
+        id: "bram", voice: "bram", x: 4900, name: "Bram",
         lines: [
           say("Bram", "bram")("You're the warden's man. Good. Then tell me why my axe won't bite."),
           say("Bram", "bram")("Cut into an oak this morning and it bled warm. Warm, like a throat."),
@@ -182,9 +190,14 @@ const LEVELS = [
       { x: 5100, kind: "camp", span: 540 },
     ],
     torches: [820, 2400, 4500, 5500],
+    // On the high ledge of the first climb, resting on the surface - a
+    // platform is drawn from its centre, so the surface is 28px above the y
+    // in this table and anything placed at that y is buried inside the slab.
+    // In this chapter the darkness is the cover: your lantern has to reach it.
+    shard: { x: 1780, y: MID - 40 },
     npcs: [
       {
-        id: "wisp", x: 2600, name: "The Wisp", float: true,
+        id: "wisp", voice: "wisp", x: 2600, name: "The Wisp", float: true,
         lines: [
           say("The Wisp", "wisp")("Little light. Little light, in all this dark."),
           say("The Wisp", "wisp")("We were wardens too, once. We forgot our promise, and the forest kept us anyway."),
@@ -204,7 +217,7 @@ const LEVELS = [
         ],
       },
       {
-        id: "villager_hand", x: 1084, name: "The Gravedigger",
+        id: "villager_hand", voice: "gravedigger", x: 1084, name: "The Gravedigger",
         lines: [
           say("The Gravedigger", "villager_hand")("Mind the fresh ones. The soil hasn't settled."),
           kn("How many this month?"),
@@ -258,9 +271,11 @@ const LEVELS = [
       { x: 4288, kind: "mine", span: 460 },
     ],
     torches: [700, 1200, 2400, 3100, 4600, 5700],
+    // The topmost ledge in the cave, which the route never needs.
+    shard: { x: 1820, y: HIGH - 40 },
     npcs: [
       {
-        id: "gethin", x: 2600, name: "Gethin",
+        id: "gethin", voice: "gethin", x: 2600, name: "Gethin",
         lines: [
           say("Gethin", "gethin")("Don't touch the reliefs. They have waited nine hundred years to be read, not handled."),
           say("Gethin", "gethin")("There - a dragon giving up its fire so the valley could grow."),
@@ -270,6 +285,13 @@ const LEVELS = [
           say("Gethin", "gethin")("Whatever we did, knight, we did not want it remembered."),
         ],
         after: [say("Gethin", "gethin")("Go on up. I'll keep reading. Someone should.")],
+        // He only says this once he can see what you are carrying.
+        onShard: [
+          say("Gethin", "gethin")("Wait. Show me that. Where did you - no, don't tell me."),
+          say("Gethin", "gethin")("That is the last panel. Someone broke it up and scattered the pieces."),
+          say("Gethin", "gethin")("Not smashed, knight. Scattered. Whoever did it wanted it findable."),
+          say("Gethin", "gethin")("Find the rest. Four, if the mortar lines are anything to go by."),
+        ],
       },
       {
         id: "merchant", x: 3900, name: "Odrin the Pedlar", shop: true,
@@ -320,9 +342,13 @@ const LEVELS = [
       { x: 5150, kind: "camp", span: 540 },
     ],
     torches: [900, 2500, 4400, 5500],
+    // Mid-chapter, on open snow under a bush. It was on the last stretch
+    // before the gate at first, which put it right on the line everybody
+    // sprints along - and too close to the camp to hide in.
+    shard: { x: 2050, y: GROUND_Y - 20, cover: "prop_bush_snow_0" },
     npcs: [
       {
-        id: "yvane", x: 1750, name: "Yvane",
+        id: "yvane", voice: "yvane", x: 1750, name: "Yvane",
         lines: [
           say("Yvane", "yvane")("Don't. Don't waste the warmth on me, I'm past it."),
           say("Yvane", "yvane")("I reached the lair. I saw it sleeping, and I thought: mercy. Strike now, while it cannot answer."),
@@ -364,26 +390,102 @@ const LEVELS = [
     enemies: [],
     crystals: [],
     checkpoints: [],
+    // His stall is still standing at the mouth of it. He is not behind it.
+    // He said he would not go in, and it turns out he did not wait either.
     camps: [{ x: 444, kind: "market", span: 460 }],
     torches: [640, 1480],
-    npcs: [
-      {
-        id: "merchant", x: 444, name: "Odrin the Pedlar", shop: true,
-        lines: [
-          say("Odrin", "merchant")("This is as far as I go. I mean that this time."),
-          kn("Then why set the stall up at all?"),
-          say("Odrin", "merchant")("Because you'll want everything I have, and because someone should see you off."),
-          say("Odrin", "merchant")("Spend it all, knight. You cannot take crystals where you're going."),
-        ],
-        after: [say("Odrin", "merchant")("Still here. Still not going in there with you.")],
-      },
+  },
+];
+
+// --- the last exchange -----------------------------------------------------
+// The dragon stops fighting at zero and asks the only thing it still wants to
+// know. Yvane warned you it would, and that it can tell.
+const dr = say("The Dragon", "dragon");
+const sev = say("Severus", "dragon");
+
+const DRAGON_QUESTION = [
+  dr("Enough."),
+  dr("You fight the way they taught you. Straight ahead, and without asking."),
+  kn("Get up."),
+  dr("No. I have carried this for nine hundred years and I am putting it down."),
+  dr("One question first. I have asked it before and been lied to."),
+  dr("When your order swore to keep this place - did you ever mean it?"),
+  {
+    speaker: "Knight", portrait: "knight",
+    options: [
+      { text: "We meant every word of it.", value: "lie" },
+      { text: "No. We never did.", value: "truth" },
+      // Only offered to a knight who heard all six of them and put the
+      // chiselled-out panel back together.
+      { text: "You meant it. You are Severus.", value: "name", secret: true },
     ],
   },
 ];
 
-const ENDING_LINES = [
-  "The dragon falls to its knees, then unravels into golden mist.",
-  "Leaves bud again - but only as far as where you stand.",
-  "Far beneath the ruins, something else opens its eyes.",
-  "The knight sheathes his sword. The road is not finished.",
-];
+const DRAGON_REPLY = {
+  lie: [
+    dr("...No."),
+    dr("Yvane stood where you are standing and told me the truth, and I let her walk out."),
+    dr("You looked me in the eye and said it anyway."),
+    dr("Then there is nothing here worth sparing. Not the wood. Not you."),
+  ],
+  truth: [
+    dr("No."),
+    dr("Say it again. Slowly. I have waited a long time to hear somebody say it."),
+    kn("We never meant it. Not one of us. We took what the fire made and we called it ours."),
+    dr("Thank you."),
+    dr("Keep the wood, knight. Not because you swore to. Because somebody has to."),
+  ],
+  name: [
+    dr("..."),
+    dr("Say that again."),
+    kn("Severus. First of the wardens. You are the only one who kept the promise."),
+    sev("Nobody has used that name since there was anyone left who knew it."),
+    sev("They chiselled me off the wall so no one would find out what keeping it costs."),
+    kn("I found the pieces. All four. It is back together."),
+    sev("Then put it somewhere they cannot reach it, and let me go home."),
+  ],
+};
+
+// --- the three endings -----------------------------------------------------
+// Which one you get is the answer you gave, and the answer you were able to
+// give is what you took the trouble to learn.
+const ENDINGS = {
+  bad: {
+    title: "THE LAST LIE",
+    heading: "NOBODY EVER KNEW WHO HE WAS",
+    music: "ending_bad",
+    tint: 0x2a0f12,
+    lines: [
+      "The fire takes you where you stand, and the wood does not mourn it.",
+      "It settles back onto the stone and waits for the next one.",
+      "It will ask them the same question. They will lie too.",
+      "The last panel stays blank, and the name on it stays gone.",
+    ],
+  },
+  good: {
+    title: "THE TRUTH, LATE",
+    heading: "THE FOREST DRAWS BREATH AGAIN",
+    music: "ending_good",
+    tint: 0x14200f,
+    lines: [
+      "It lets go, and nine hundred years go with it.",
+      "The fire goes back into the ground, and the ground takes it.",
+      "Lanterns relight along the ridge, one after another, all the way down.",
+      "You never learned its name. The wardens kept that much from you.",
+    ],
+  },
+  secret: {
+    title: "SEVERUS",
+    heading: "THE FIRST WARDEN GOES HOME",
+    music: "ending_secret",
+    tint: 0x101828,
+    lines: [
+      "The scales go first, then the horns, then the long years of it.",
+      "What is left on the stone is an old man in a warden's coat, and he is smiling.",
+      "You set the four pieces back into the wall. The panel is whole.",
+      "It shows a man walking into the dark on purpose, so that nobody else has to.",
+      "Someone will read it. That was all he ever wanted.",
+    ],
+  },
+};

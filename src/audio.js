@@ -22,7 +22,9 @@ const REVERBS = {
   snow: { dur: 0.9, decay: 3.4, tone: 0.62, wet: 0.16 },
   lair: { dur: 3.9, decay: 1.5, tone: 0.16, wet: 0.38 },
   title: { dur: 2.2, decay: 2.0, tone: 0.45, wet: 0.3 },
-  ending: { dur: 2.6, decay: 2.0, tone: 0.5, wet: 0.34 },
+  ending_bad: { dur: 3.4, decay: 1.4, tone: 0.2, wet: 0.42 },
+  ending_good: { dur: 2.6, decay: 2.0, tone: 0.5, wet: 0.34 },
+  ending_secret: { dur: 4.2, decay: 2.4, tone: 0.42, wet: 0.5 },
 };
 
 // Footstep timbre per ground surface.
@@ -63,15 +65,36 @@ const MUSIC = {
     chords: [[48, 60, 67, 72], [46, 58, 65, 70], [43, 55, 62, 69], [48, 60, 67, 74]],
     arp: [3, 2, 1, 2, 3, 2, 1, 0], perc: null, arpVol: 0.09, padVol: 0.085, gain: 0.6,
   },
+  // The only theme that grows. It opens thin - a drone and a slow taiko - and
+  // Sound.setIntensity() lets the rest of it in as the dragon loses ground.
   lair: {
     bpm: 96, barsPerChord: 1, padWave: "sawtooth", arpWave: "sawtooth",
     chords: [[31, 43, 50, 55], [31, 43, 50, 56], [34, 46, 53, 58], [29, 41, 48, 53]],
     arp: [0, 0, 1, 0, 2, 0, 1, 3], perc: "taiko", arpVol: 0.07, padVol: 0.12,
+    layered: true,
   },
-  ending: {
+  // One closing theme per ending, because three different last words should
+  // not be read over the same music.
+  //
+  // Bad: minor, and it never resolves - the last chord is the same as the
+  // first, so it can only start again.
+  ending_bad: {
+    bpm: 50, barsPerChord: 2, padWave: "sawtooth", arpWave: "sine",
+    chords: [[38, 50, 53, 57], [38, 50, 53, 57], [36, 48, 51, 55], [38, 50, 53, 57]],
+    arp: [0, 0, 1, 0, 0, 1, 0, 0], perc: null, arpVol: 0.045, padVol: 0.1, gain: 0.85,
+  },
+  // Good: major, warm, and it does resolve - the forest getting its breath back.
+  ending_good: {
     bpm: 62, barsPerChord: 2, padWave: "sawtooth", arpWave: "triangle",
     chords: [[48, 60, 64, 67], [43, 55, 59, 62], [45, 57, 60, 64], [41, 53, 57, 60]],
     arp: [0, 1, 2, 3, 2, 1, 0, 1], perc: null, arpVol: 0.09, padVol: 0.09,
+  },
+  // Secret: almost nothing. One voice, very slow, in the open fifths the game
+  // has not used anywhere else - it should not sound like the rest of it.
+  ending_secret: {
+    bpm: 40, barsPerChord: 4, padWave: "triangle", arpWave: "sine",
+    chords: [[45, 57, 64, 69], [43, 55, 62, 67], [40, 52, 59, 64], [45, 57, 64, 71]],
+    arp: [0, 3, 0, 3, 0, 3, 0, 3], perc: null, arpVol: 0.05, padVol: 0.075, gain: 0.8,
   },
 };
 
@@ -89,6 +112,7 @@ const Sound = {
   env: "valley",
 
   _music: null, _musicTimer: null, _bar: 0, _nextBarTime: 0, _chordIdx: 0,
+  _intensity: 0, _held: null,
   _amb: [], _ambTimer: null,
 
   // ------------------------------------------------------------------ setup
@@ -456,6 +480,24 @@ const Sound = {
         }
         break;
       }
+      // A shard sitting somewhere near: one soft bell, far off, no direction.
+      // It is the only thing that gives them away, so it has to be noticeable
+      // without ever sounding like a pickup or a pings-on-the-minimap chirp.
+      case "shardNear": {
+        const out = this._chain(place, this.sfxBus, 0.75);
+        [1244, 1864].forEach((f, i) =>
+          this._metal({ base: f, partials: [1, 2.76], dur: 1.4, vol: 0.05 * v,
+                        t0: t0 + i * 0.09, dest: out, type: "sine" }));
+        break;
+      }
+      case "shardTake": {
+        const out = this._chain(place, this.sfxBus, 0.7);
+        this._noise({ dur: 0.18, vol: 0.1 * v, freq: 2600, to: 700, q: 1.1, t0, dest: out });
+        [523, 784, 1046, 1568].forEach((f, i) =>
+          this._metal({ base: f, partials: [1, 2.01, 3.4], dur: 1.6, vol: 0.09 * v,
+                        t0: t0 + i * 0.07, dest: out, type: "sine" }));
+        break;
+      }
       case "shopOpen": {
         const out = this._chain(place, this.sfxBus, 0.5);
         this._noise({ dur: 0.3, vol: 0.12 * v, freq: 900, to: 2600, q: 0.8, t0, dest: out });
@@ -675,6 +717,7 @@ const Sound = {
     this._chordIdx = 0;
     // Themes carry their own level so a loud one can be trimmed on its own.
     this.musicBus.gain.setTargetAtTime(0.8 * (this._music.gain ?? 1), this.ctx.currentTime, 0.2);
+    this._intensity = 0;
     this._nextBarTime = this.ctx.currentTime + 0.15;
     this._musicTimer = setInterval(() => this._scheduleMusic(), 120);
     this._scheduleMusic();
@@ -685,6 +728,52 @@ const Sound = {
     this._musicTimer = null;
     this._musicKey = null;
     this._music = null;
+    this._intensity = 0;
+  },
+
+  // How hard the fight is going, 0 to 1. A `layered` theme reads this at the
+  // top of every bar and lets another part in as it climbs, so the music
+  // tracks the fight instead of looping at one level through all of it.
+  setIntensity(v) {
+    this._intensity = Math.max(0, Math.min(1, v));
+  },
+
+  // Everything stops, and one note is left hanging in the room. Used the
+  // moment the dragon goes down on its knees: the silence is the point, and
+  // the held tone is only there so the room does not feel switched off.
+  holdBreath(midi = 43) {
+    if (!this.ctx) return;
+    this.stopMusic();
+    this.releaseBreath();
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.055, this.ctx.currentTime + 2.4);
+    g.connect(this.musicBus);
+    const send = this.ctx.createGain();
+    send.gain.value = 0.7;
+    g.connect(send); send.connect(this.reverb);
+    const osc = this.ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = midiHz(midi);
+    const det = this.ctx.createOscillator();
+    det.type = "sine";
+    det.frequency.value = midiHz(midi) * 1.004;   // a slow beat, so it breathes
+    osc.connect(g); det.connect(g);
+    osc.start(); det.start();
+    this._held = { g, nodes: [osc, det] };
+  },
+
+  releaseBreath() {
+    if (!this._held) return;
+    const { g, nodes } = this._held;
+    this._held = null;
+    const t = this.ctx.currentTime;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    for (const n of nodes) {
+      try { n.stop(t + 1.4); } catch (e) { /* already stopped */ }
+    }
   },
 
   // Bar-level lookahead: whenever the next bar falls inside the next second,
@@ -750,11 +839,55 @@ const Sound = {
       this._osc({ type: m.arpWave, freq: midiHz(note), dur: stepDur * 2.2, vol: 1, t0: at, dest: g });
     });
 
+    // --- layers that only exist once the fight is going badly for it -------
+    // Each one enters at its own threshold, so the theme thickens as the
+    // dragon weakens rather than looping at one level for the whole fight.
+    const heat = m.layered ? this._intensity : 0;
+
+    if (heat >= 0.3 && newChord) {
+      // A low choir an octave under the pad: the first thing you notice.
+      const chordDur = barDur * m.barsPerChord;
+      const g = this.ctx.createGain();
+      g.connect(bus);
+      const send = this.ctx.createGain();
+      send.gain.value = 0.8;
+      g.connect(send); send.connect(this.reverb);
+      this._adsr(g.gain, t0, 0.075 * heat, chordDur * 0.4, chordDur * 0.2, 0.8,
+                 chordDur * 0.3, chordDur * 0.45);
+      for (const det of [-11, 9]) {
+        this._osc({ type: "triangle", freq: midiHz(chord[1] - 12), dur: chordDur * 1.05,
+                    vol: 1, t0, dest: g, detune: det });
+      }
+    }
+    if (heat >= 0.55) {
+      // The floor drops: a sub an octave below the root, on every bar.
+      const sub = this.ctx.createGain();
+      sub.connect(bus);
+      this._adsr(sub.gain, t0, 0.13 * heat, 0.05, 0.25, 0.7, barDur * 0.35, barDur * 0.5);
+      this._osc({ type: "sine", freq: midiHz(chord[0] - 24), dur: barDur, vol: 1, t0, dest: sub });
+    }
+    if (heat >= 0.8) {
+      // A thin line an octave up, doubling the arpeggio's pace. Only in the
+      // last quarter of the fight, when it is throwing everything it has.
+      const stepUp = barDur / 16;
+      for (let i = 0; i < 16; i++) {
+        const note = chord[m.arp[i % m.arp.length] % chord.length] + 24;
+        const at = t0 + i * stepUp;
+        const g = this.ctx.createGain();
+        g.connect(bus);
+        this._adsr(g.gain, at, 0.028 * heat, 0.006, 0.05, 0.2, 0.03, stepUp * 1.4);
+        this._osc({ type: "square", freq: midiHz(note), dur: stepUp * 1.6, vol: 1, t0: at, dest: g });
+      }
+    }
+
     // Percussion.
     if (m.perc === "taiko") {
-      for (const beat of [0, 2]) {
+      // Two beats to the bar normally; all four once it is cornered.
+      const beats = (m.layered && this._intensity >= 0.55) ? [0, 1, 2, 3] : [0, 2];
+      for (const beat of beats) {
         const at = t0 + beat * (barDur / 4);
-        this._osc({ type: "sine", freq: 130, to: 52, dur: 0.3, vol: 0.28, t0: at, dest: bus, curve: "linear" });
+        const hard = 0.28 + 0.12 * (m.layered ? this._intensity : 0);
+        this._osc({ type: "sine", freq: 130, to: 52, dur: 0.3, vol: hard, t0: at, dest: bus, curve: "linear" });
         this._noise({ dur: 0.12, vol: 0.1, freq: 1400, to: 400, q: 0.8, t0: at, dest: bus });
       }
       const at = t0 + 3 * (barDur / 4);

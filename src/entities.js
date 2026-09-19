@@ -380,6 +380,7 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
     this.hp = this.maxHp;
     this.alive_ = true;
     this.phase = "hover";
+    this.kneeling = false;
     this.nextPhaseAt = 0;
     this.nextShotAt = 0;
     this.hoverY = 190;
@@ -426,21 +427,48 @@ class Dragon extends Phaser.Physics.Arcade.Sprite {
     this.scene.cameras.main.shake(120, 0.006);
     this.scene.updateBossBar();
     if (this.hp <= 0) {
-      this.kill();
+      this.kneel();
     } else if (!this.roaring) {
       this.play("dragon-hurt");
     }
   }
 
-  kill() {
+  // At zero it does not die - it stops. Nine hundred years of holding the
+  // line ends with it going down on its knees and asking one question, and
+  // what happens after that is the player's to decide.
+  kneel() {
     if (!this.alive_) return;
     this.alive_ = false;
+    this.kneeling = true;
     this.body.enable = false;
     this.roaring = false;
     this.setAngle(0);
-    this.play("dragon-death");
+    this.setVelocity(0, 0);
+    this.play("dragon-rest");
     Sound.play("bossDie", { x: this.x });
-    this.scene.onBossDefeated();
+    this.scene.tweens.add({ targets: this, y: this.groundY, duration: 900,
+                            ease: "Quad.easeOut" });
+    this.scene.onDragonKneels();
+  }
+
+  // It accepted what you said, and lets go.
+  perish() {
+    this.kneeling = false;
+    this.play("dragon-death");
+    this.scene.tweens.add({
+      targets: this, alpha: 0, y: this.y - 40, duration: 2600,
+      onComplete: () => this.active && this.destroy(),
+    });
+  }
+
+  // It did not. The one thing it had left to ask, and you lied to it.
+  rise() {
+    this.kneeling = false;
+    this.setAlpha(1);
+    this.play("dragon-roar");
+    Sound.play("roar", { x: this.x });
+    this.scene.tweens.add({ targets: this, y: this.hoverY, duration: 700,
+                            ease: "Back.easeOut" });
   }
 
   roar() {

@@ -6,13 +6,33 @@ const GameState = {
   lives: 3,
   checkpointX: null, // survives the scene restart that follows a death
   godMode: false,    // cheat: set by typing the code below, survives restarts
+
+  // What the dragon will weigh at the end. Both survive a death and a change
+  // of chapter, and both are wiped when a new game starts - you cannot carry
+  // last run's knowledge into this one.
+  heard: {},   // story NPCs the knight has finished a conversation with
+  shards: {},  // pieces of the chiselled-out relief he is carrying
+
   reset() {
     this.levelIndex = 0;
     this.score = 0;
     this.lives = 3;
     this.checkpointX = null;
+    this.heard = {};
+    this.shards = {};
     Buffs.clear();
     Satchel.clear();
+  },
+
+  shardCount() {
+    return Object.keys(this.shards).length;
+  },
+
+  // The whole truth: every one of them told you a piece of it, and the panel
+  // they chiselled out is back together.
+  knowsEverything() {
+    return STORY_VOICES.every((id) => this.heard[id]) &&
+           this.shardCount() >= SHARD_TOTAL;
   },
 };
 
@@ -168,6 +188,11 @@ const CREDITS_NOTES = [
 ];
 
 const FONT = "monospace";
+// The six who each hold a piece of what happened here. Talking to all of them
+// is half of what the dragon is listening for at the end.
+const STORY_VOICES = ["maren", "bram", "wisp", "gravedigger", "gethin", "yvane"];
+const SHARD_TOTAL = 4;
+
 // Everyone cut from the GREEN WOODS sheet: the five the story stops for, and
 // the villagers who just live here.
 const CAST_FOLK = [
@@ -213,6 +238,7 @@ class BootScene extends Phaser.Scene {
     this.load.spritesheet("torch", ASSET_DATA.torch, { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet("torch_wall", ASSET_DATA.torch_wall, { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet("portal", ASSET_DATA.portal, { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet("shard", ASSET_DATA.shard, { frameWidth: 36, frameHeight: 36 });
     this.load.image("particle", ASSET_DATA.particle);
 
     this.load.spritesheet("hero", ASSET_DATA.hero, { frameWidth: 128, frameHeight: 64 });
@@ -235,6 +261,8 @@ class BootScene extends Phaser.Scene {
     this.load.spritesheet("npc_wisp", ASSET_DATA.npc_wisp, { frameWidth: 64, frameHeight: 80 });
     this.load.image("portrait_wisp", ASSET_DATA.portrait_wisp);
     this.load.image("portrait_knight", ASSET_DATA.portrait_knight);
+    // The dragon speaks once, at the end, and needs a face for it.
+    this.load.image("portrait_dragon", ASSET_DATA.portrait_dragon);
     for (const icon of ["whet", "swift", "ward", "ember", "heart"]) {
       this.load.image(`icon_${icon}`, ASSET_DATA[`icon_${icon}`]);
     }
@@ -294,6 +322,7 @@ class BootScene extends Phaser.Scene {
     A.create({ key: "torch-burn", frames: A.generateFrameNumbers("torch", { start: 0, end: 5 }), frameRate: 10, repeat: -1 });
     A.create({ key: "torch-wall-burn", frames: A.generateFrameNumbers("torch_wall", { start: 0, end: 5 }), frameRate: 10, repeat: -1 });
     A.create({ key: "portal-turn", frames: A.generateFrameNumbers("portal", { start: 0, end: 9 }), frameRate: 12, repeat: -1 });
+    A.create({ key: "shard-glint", frames: A.generateFrameNumbers("shard", { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
 
     this.scene.start("title");
   }
@@ -583,6 +612,7 @@ class GameScene extends Phaser.Scene {
     this.gate = null;
     this.bossBar = null;
     this.bossBarBg = null;
+    this.bossName = null;
     this.lanterns = [];
 
     const level = LEVELS[GameState.levelIndex];
@@ -600,6 +630,8 @@ class GameScene extends Phaser.Scene {
     this.buildProps();
     this.buildPickups();
     this.spawnActors();
+    // After the player exists: the shard overlaps with him.
+    this.buildShard();
     this.buildHud();
     this.bindInput();
 
@@ -800,6 +832,58 @@ class GameScene extends Phaser.Scene {
         this.lanterns.push({ x: camp.x + dx, y: GROUND_Y - 76 });
       }
     }
+  }
+
+  // The hidden piece of the chiselled-out relief. It is deliberately dull and
+  // deliberately off the running line; the chime is what finds it.
+  buildShard() {
+    this.shard = null;
+    const def = this.level.shard;
+    if (!def || GameState.shards[this.level.key]) return;
+
+    this.shard = this.physics.add.sprite(def.x, def.y, "shard")
+      .setDepth(6).setScale(1.2);
+    this.shard.body.setAllowGravity(false);
+    this.shard.body.setImmovable(true);
+    this.shard.play("shard-glint");
+    // In the lit chapters something is drawn over the top of it, so it is
+    // genuinely out of sight rather than merely somewhere odd.
+    if (def.cover) {
+      this.add.image(def.x + 6, GROUND_Y + 6, def.cover)
+        .setOrigin(0.5, 1).setDepth(9).setScale(2.1);
+    }
+    this.nextChimeAt = 0;
+    this.physics.add.overlap(this.player, this.shard, () => this.takeShard());
+  }
+
+  takeShard() {
+    if (!this.shard) return;
+    GameState.shards[this.level.key] = true;
+    Sound.play("shardTake", { x: this.shard.x });
+    this.add.particles(this.shard.x, this.shard.y, "particle", {
+      speed: { min: 40, max: 130 }, lifespan: 700, quantity: 16,
+      scale: { start: 1, end: 0 }, tint: [0xffc46e, 0xffe6b3], blendMode: "ADD",
+      emitting: false,
+    }).setDepth(30).explode(16);
+    this.shard.destroy();
+    this.shard = null;
+    this.floatNote(`A piece of the panel  ${GameState.shardCount()}/${SHARD_TOTAL}`, "#ffc46e");
+    this.refreshHud();
+  }
+
+  // One bell when you are close, on a long cooldown, with no arrow and no
+  // marker. Hearing it twice in the same place is the hint.
+  listenForShard(time) {
+    if (!this.shard || time < this.nextChimeAt) return;
+    if (Math.abs(this.player.x - this.shard.x) > 150) return;
+    if (Math.abs(this.player.y - this.shard.y) > 170) return;
+    this.nextChimeAt = time + 1600;
+    Sound.play("shardNear");
+    this.add.particles(this.shard.x, this.shard.y - 6, "particle", {
+      speed: { min: 8, max: 26 }, lifespan: 900, quantity: 1,
+      scale: { start: 0.8, end: 0 }, tint: 0xffd9a0, blendMode: "ADD",
+      emitting: false,
+    }).setDepth(30).explode(1);
   }
 
   lightFire(x, y, scale) {
@@ -1019,6 +1103,13 @@ class GameScene extends Phaser.Scene {
       };
     });
 
+    // Says nothing at all until you are carrying one. Before that, as far as
+    // the game is concerned, there is nothing to collect.
+    this.shardText = this.add.text(GAME_W - 24, 74, "", {
+      fontFamily: FONT, fontSize: "14px", color: "#ffc46e",
+      stroke: "#0a0810", strokeThickness: 4,
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(60).setVisible(false);
+
     this.livesText = this.add.text(X + 4, Y + 66 * S, "", {
       fontFamily: FONT, fontSize: "15px", color: "#e8dccb",
       stroke: "#0a0810", strokeThickness: 4,
@@ -1046,7 +1137,7 @@ class GameScene extends Phaser.Scene {
         .setScrollFactor(0).setDepth(60).setStrokeStyle(2, 0x7a5a4a);
       this.bossBar = this.add.rectangle(GAME_W / 2 - 258, GAME_H - 34, 516, 14, 0xc3452f)
         .setOrigin(0, 0.5).setScrollFactor(0).setDepth(61);
-      this.add.text(GAME_W / 2, GAME_H - 56, "FOREST DRAGON", {
+      this.bossName = this.add.text(GAME_W / 2, GAME_H - 56, "FOREST DRAGON", {
         fontFamily: FONT, fontSize: "14px", color: "#ffb9a0",
       }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
     }
@@ -1098,6 +1189,10 @@ class GameScene extends Phaser.Scene {
       slot.frame.setStrokeStyle(2, held ? 0xb99b6a : 0x3a2f22);
       slot.count.setText(held ? `x${held}` : "");
     });
+
+    const shards = GameState.shardCount();
+    this.shardText.setVisible(shards > 0)
+      .setText(shards > 0 ? `PANEL  ${shards}/${SHARD_TOTAL}` : "");
 
     this.livesText.setText(`LIVES x${GameState.lives}`);
     this.scoreText.setText(`CRYSTALS  ${GameState.score}`);
@@ -1321,17 +1416,65 @@ class GameScene extends Phaser.Scene {
                       onComplete: () => label.destroy() });
   }
 
-  onBossDefeated() {
+  // The dragon has stopped. Everything stops with it: the music, the weather,
+  // the knight. The silence is the point - it is the only time in the game
+  // the score drops out completely.
+  onDragonKneels() {
+    // The whole health bar goes, name included - it was still sitting behind
+    // the dialogue box while the dragon asked its question.
     this.bossBar?.setVisible(false);
     this.bossBarBg?.setVisible(false);
-    this.cameras.main.shake(700, 0.012);
-    this.tweens.add({
-      targets: this.boss, alpha: 0, y: this.boss.y - 40, duration: 2200,
-      onComplete: () => {
-        this.boss.destroy();
-        this.spawnGate(this.levelWidth - 260);
-      },
+    this.bossName?.setVisible(false);
+    this.cameras.main.shake(900, 0.010);
+    Sound.stopAmbience();
+    Sound.holdBreath(43);
+    this.player.rest();
+
+    this.time.delayedCall(1700, () => {
+      if (!this.scene.isActive()) return;
+      // The third answer is only offered to a knight who heard all six of
+      // them and carries the panel they broke up.
+      const question = DRAGON_QUESTION.map((line) => {
+        if (!line.options) return line;
+        return { ...line,
+                 options: line.options.filter((o) => !o.secret || GameState.knowsEverything()) };
+      });
+      this.dialogue.start(question, (answer) => this.answerDragon(answer));
     });
+  }
+
+  answerDragon(answer) {
+    const reply = DRAGON_REPLY[answer] || DRAGON_REPLY.truth;
+    this.dialogue.start(reply, () => this.finishDragon(answer));
+  }
+
+  finishDragon(answer) {
+    // The answers are named for what the knight says; the endings are named
+    // for what they are. Map them here rather than hoping the two vocabularies
+    // stay in step - they did not, and "name" quietly fell through to the
+    // good ending.
+    const ending = { lie: "bad", truth: "good", name: "secret" }[answer] || "good";
+    Sound.releaseBreath();
+    if (answer === "lie") {
+      // It gets back up, and the fight is already over - you just did not
+      // know which way.
+      this.boss.rise();
+      this.cameras.main.shake(600, 0.014);
+      this.time.delayedCall(900, () => {
+        if (!this.scene.isActive()) return;
+        this.boss.spitFire();
+        this.player.dead = true;
+        this.player.setVelocity(0, -240);
+        this.player.play("hero-death");
+        Sound.play("death", { x: this.player.x });
+        this.cameras.main.fade(1400, 0, 0, 0);
+      });
+      this.time.delayedCall(2700, () => this.scene.start("ending", { ending }));
+      return;
+    }
+    this.boss.perish();
+    this.cameras.main.shake(500, 0.006);
+    this.time.delayedCall(2900, () => this.scene.start("ending", { ending }));
   }
 
   completeLevel() {
@@ -1344,8 +1487,9 @@ class GameScene extends Phaser.Scene {
     this.time.delayedCall(850, () => {
       GameState.levelIndex += 1;
       GameState.checkpointX = null;
-      if (GameState.levelIndex >= LEVELS.length) this.scene.start("ending");
-      else this.scene.start("story");
+      // The last chapter does not end at a gate - it ends at the dragon's
+      // question - so this only ever leads to the next chapter card.
+      this.scene.start("story");
     });
   }
 
@@ -1379,12 +1523,25 @@ class GameScene extends Phaser.Scene {
       this.player.rest();
       this.player.invulnUntil = Math.max(this.player.invulnUntil, time + 200);
       this.enemies.getChildren().forEach((en) => en.setVelocity(0, 0));
+      // While an answer is on screen the arrows pick it, exactly as they pick
+      // a row in the market - no new control to learn at the worst moment.
+      if (this.dialogue.choosing) {
+        const c = this.cursors, k = this.keys;
+        if (Phaser.Input.Keyboard.JustDown(c.up) || Phaser.Input.Keyboard.JustDown(k.up)) {
+          this.dialogue.moveChoice(-1);
+        }
+        if (Phaser.Input.Keyboard.JustDown(c.down) || Phaser.Input.Keyboard.JustDown(k.down)) {
+          this.dialogue.moveChoice(1);
+        }
+      }
       if (Phaser.Input.Keyboard.JustDown(this.keys.talk) ||
           Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
         this.dialogue.advance();
       }
       return;
     }
+
+    this.listenForShard(time);
 
     const mobs = this.enemies.getChildren();
     this.npcs.forEach((n) => { n.live(time, this.player, mobs); n.refresh(this.player); });
@@ -1404,7 +1561,11 @@ class GameScene extends Phaser.Scene {
           }
         } else {
           Sound.play("select", { x: who.x });
-          this.dialogue.start(who.conversation());
+          // Heard, not merely met: the dragon weighs whether you sat through
+          // what they had to say, so it is recorded when the exchange ends.
+          this.dialogue.start(who.conversation(), () => {
+            if (who.def.voice) GameState.heard[who.def.voice] = true;
+          });
         }
         return;
       }
@@ -1436,7 +1597,12 @@ class GameScene extends Phaser.Scene {
     this.player.handleInput(input);
 
     this.enemies.getChildren().forEach((en) => en.tick(this.player));
-    if (this.boss) this.boss.tick(time, this.player);
+    if (this.boss) {
+      this.boss.tick(time, this.player);
+      // The score follows the fight: every point of the dragon's health it
+      // loses lets another layer of the theme in.
+      if (this.boss.alive_) Sound.setIntensity(1 - this.boss.hp / this.boss.maxHp);
+    }
 
     this.fireballs.getChildren().forEach((ball) => {
       if (!ball.active) return;
@@ -1531,38 +1697,58 @@ class GameOverScene extends Phaser.Scene {
 class EndingScene extends Phaser.Scene {
   constructor() { super("ending"); }
 
-  create() {
+  // One scene, three endings. Which one arrives is decided at the dragon's
+  // knee and handed in as scene data.
+  create(data) {
+    const key = (data && data.ending) || "good";
+    const ending = ENDINGS[key] || ENDINGS.good;
+
     Sound.stopAmbience();
-    Sound.setEnvironment("ending");
-    Sound.startMusic("ending");
+    Sound.releaseBreath();
+    Sound.setEnvironment(ending.music);
+    Sound.startMusic(ending.music);
+
     this.add.image(0, 0, "sky_valley").setOrigin(0);
-    this.add.tileSprite(0, GAME_H - 600, GAME_W, 600, "near_valley").setOrigin(0).setAlpha(0.6);
-    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0710, 0.65).setOrigin(0);
+    this.add.tileSprite(0, GAME_H - 540, GAME_W, 540, "near_valley")
+      .setOrigin(0).setAlpha(0.5);
+    // Each ending washes the same view in its own colour, so you know which
+    // one you are reading before you have read a word of it.
+    this.add.rectangle(0, 0, GAME_W, GAME_H, ending.tint, 0.82).setOrigin(0);
 
-    this.add.text(GAME_W / 2, 90, "THE FOREST DRAWS BREATH AGAIN", {
-      fontFamily: FONT, fontSize: "26px", color: "#ffd9a0",
+    this.add.text(GAME_W / 2, 56, ending.title, {
+      fontFamily: FONT, fontSize: "15px", color: "#9c8f7f",
     }).setOrigin(0.5);
+    this.add.text(GAME_W / 2, 88, ending.heading, {
+      fontFamily: FONT, fontSize: "25px", color: "#ffd9a0",
+      stroke: "#1a0f08", strokeThickness: 6,
+      wordWrap: { width: GAME_W - 120 }, align: "center",
+    }).setOrigin(0.5);
+    this.add.rectangle(GAME_W / 2, 118, 380, 2, 0xb99b6a, 0.8);
 
-    ENDING_LINES.forEach((line, i) => {
-      const t = this.add.text(GAME_W / 2, 180 + i * 46, line, {
-        fontFamily: FONT, fontSize: "17px", color: "#e2d8ca", align: "center",
-        wordWrap: { width: GAME_W - 160 },
+    ending.lines.forEach((line, i) => {
+      const t = this.add.text(GAME_W / 2, 164 + i * 44, line, {
+        fontFamily: FONT, fontSize: "16px", color: "#e2d8ca", align: "center",
+        wordWrap: { width: GAME_W - 150 },
       }).setOrigin(0.5).setAlpha(0);
-      this.tweens.add({ targets: t, alpha: 1, duration: 800, delay: 500 + i * 1100 });
+      this.tweens.add({ targets: t, alpha: 1, duration: 900, delay: 600 + i * 1200 });
     });
 
-    // Off to the side so he never sits under the closing lines.
-    const knight = this.add.sprite(GAME_W - 150, GAME_H - 66, "hero").setScale(HERO_SCALE).setAlpha(0);
-    knight.play("hero-idle");
-    this.tweens.add({ targets: knight, alpha: 1, duration: 1200, delay: 1200 });
+    // The knight only walks out of two of these.
+    if (key !== "bad") {
+      const knight = this.add.sprite(GAME_W - 130, GAME_H - 54, "hero")
+        .setScale(HERO_SCALE).setAlpha(0);
+      knight.play("hero-idle");
+      this.tweens.add({ targets: knight, alpha: 1, duration: 1400, delay: 1400 });
+    }
 
-    const score = this.add.text(GAME_W / 2, 390, `Crystals gathered: ${GameState.score}`, {
-      fontFamily: FONT, fontSize: "18px", color: "#8fd9e8",
+    const wait = 700 + ending.lines.length * 1200;
+    const score = this.add.text(GAME_W / 2, GAME_H - 96, `Crystals gathered: ${GameState.score}`, {
+      fontFamily: FONT, fontSize: "16px", color: "#8fd9e8",
     }).setOrigin(0.5).setAlpha(0);
-    const again = this.add.text(GAME_W / 2, 430, "ENTER  to return to the title", {
-      fontFamily: FONT, fontSize: "17px", color: "#ffe6b3",
+    const again = this.add.text(GAME_W / 2, GAME_H - 58, "ENTER  to return to the title", {
+      fontFamily: FONT, fontSize: "16px", color: "#ffe6b3",
     }).setOrigin(0.5).setAlpha(0);
-    this.tweens.add({ targets: [score, again], alpha: 1, duration: 800, delay: 500 + ENDING_LINES.length * 1100 });
+    this.tweens.add({ targets: [score, again], alpha: 1, duration: 800, delay: wait });
 
     this.input.keyboard.once("keydown-ENTER", () => {
       Sound.play("select");

@@ -174,7 +174,6 @@ DECOR = {
 
 # Whole-file props, and the bands to cut out of Pine Trees.png.
 TREES = {
-    "tree_green": "Tree1.png",
     "tree_autumn": "Tree3.png",
     "tree_snow": "Tree4.png",
     "birch_autumn": "Birch2.png",
@@ -271,8 +270,12 @@ def build_props(src):
         save(reseason(clump, "autumn"), f"tallgrass_autumn_{i}.png")
         save(reseason(clump, "snow"), f"tallgrass_snow_{i}.png")
 
+    # The first two pieces of the wheat row are a few stray pixels, too small
+    # to read as anything once they are placed.
     wheat = Image.open(os.path.join(src, "Wheat.png")).convert("RGBA")
     for i, stalk in enumerate(split_band(trimmed(wheat))):
+        if stalk.width < 12 or stalk.height < 12:
+            continue
         save(stalk, f"prop_wheat_{i}.png")
 
 
@@ -286,9 +289,10 @@ PASSTHROUGH = {
 # One row of Torch.png is one torch burning; row 1 is the wall bracket, row 2
 # the standing torch.
 TORCH_ROWS = {"torch_wall": 1, "torch": 2}
+# Only what the game actually places. The pack has two more single birds and
+# more cloud sizes; emitting them just put unreferenced art in the payload.
 SKY_BITS = {
     "bird_a": "birds1.png", "bird_b": "birds2.png",
-    "bird_c": "birds3.png", "bird_d": "birds4.png",
     "cloud_a": "cloud2.png", "cloud_b": "cloud3.png",
     "cloud_c": "cloud4.png", "cloud_d": "cloud5.png",
 }

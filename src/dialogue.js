@@ -45,6 +45,13 @@ class DialogueBox {
       wordWrap: { width: DLG.boxW - DLG.portrait - DLG.pad * 3 - 20 },
     }).setScrollFactor(0).setDepth(d + 1).setVisible(false);
 
+    // Up to three answers, drawn where the body text goes. Created once and
+    // hidden, like every other piece of this box.
+    const optX = DLG.boxX + DLG.pad * 2 + DLG.portrait;
+    this.options = [0, 1, 2].map((i) => scene.add.text(optX, DLG.boxY + 34 + i * 30, "", {
+      fontFamily: FONT, fontSize: "16px", color: "#e8dccb",
+    }).setScrollFactor(0).setDepth(d + 1).setVisible(false));
+
     this.more = scene.add.text(DLG.boxX + DLG.boxW - 26, DLG.boxY + DLG.boxH - 28, "▼", {
       fontFamily: FONT, fontSize: "16px", color: "#ffd9a0",
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(d + 1).setVisible(false);
@@ -56,6 +63,9 @@ class DialogueBox {
     this.active = true;
     this.lines = lines;
     this.index = 0;
+    this.choosing = false;
+    this.cursor = 0;
+    this.picked = null;
     this.onDone = onDone || null;
     [this.panel, this.portrait, this.nameText, this.bodyText].forEach((o) => o.setVisible(true));
     // No floating "talk" prompts while someone is actually talking.
@@ -67,19 +77,58 @@ class DialogueBox {
     const line = this.lines[this.index];
     this.portrait.setTexture(`portrait_${line.portrait}`);
     this.nameText.setText(line.speaker);
+    this.more.setVisible(false);
+
+    // An answer line hands the box over to the player.
+    this.choosing = !!line.options;
+    if (this.choosing) {
+      this.shown = 0;
+      this.bodyText.setText("");
+      this.cursor = 0;
+      this.choices = line.options;
+      this.refreshOptions();
+      return;
+    }
+    this.options.forEach((o) => o.setVisible(false));
     this.bodyText.setText("");
     this.shown = 0;
     this.nextCharAt = 0;
-    this.more.setVisible(false);
+  }
+
+  refreshOptions() {
+    this.options.forEach((row, i) => {
+      const opt = this.choices[i];
+      row.setVisible(!!opt);
+      if (!opt) return;
+      const on = i === this.cursor;
+      row.setText(`${on ? "▸ " : "  "}${opt.text}`);
+      row.setColor(on ? "#ffd9a0" : "#a99c8c");
+    });
+  }
+
+  moveChoice(step) {
+    if (!this.choosing) return;
+    this.cursor = (this.cursor + step + this.choices.length) % this.choices.length;
+    Sound.play("select");
+    this.refreshOptions();
   }
 
   get typing() {
+    if (this.choosing) return false;
     return this.shown < this.lines[this.index].text.length;
   }
 
   // Advance: first press completes the line, the next moves on.
   advance() {
     if (!this.active) return;
+    if (this.choosing) {
+      // The answer is the end of the exchange - whoever started it decides
+      // what happens next from the value it reports.
+      this.picked = this.choices[this.cursor].value;
+      Sound.play("select");
+      this.close();
+      return;
+    }
     if (this.typing) {
       this.shown = this.lines[this.index].text.length;
       this.bodyText.setText(this.lines[this.index].text);
@@ -93,11 +142,14 @@ class DialogueBox {
 
   close() {
     this.active = false;
+    this.choosing = false;
     [this.panel, this.portrait, this.nameText, this.bodyText, this.more]
       .forEach((o) => o.setVisible(false));
+    this.options.forEach((o) => o.setVisible(false));
     const done = this.onDone;
+    const picked = this.picked;
     this.onDone = null;
-    if (done) done();
+    if (done) done(picked);
   }
 
   update(time) {
@@ -186,7 +238,11 @@ class Npc extends Phaser.Physics.Arcade.Sprite {
 
   // What this character says: the full exchange first time, a short line after.
   conversation() {
-    const lines = this.talked && this.def.after ? this.def.after : this.def.lines;
+    let lines = this.talked && this.def.after ? this.def.after : this.def.lines;
+    // Some people have more to say once they see what you are carrying.
+    if (this.def.onShard && GameState.shardCount() > 0) {
+      lines = lines.concat(this.def.onShard);
+    }
     this.talked = true;
     return lines;
   }

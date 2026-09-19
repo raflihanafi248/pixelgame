@@ -1000,10 +1000,14 @@ def gen_wisp():
     save(img, "portrait_wisp.png")
 
 def gen_npcs():
-    for name, pal in NPCS.items():
-        frames = [npc_frame(pal, bob=0, arm=0), npc_frame(pal, bob=1, arm=1)]
-        sheet_of(frames, N_W, N_H, f"npc_{name}.png")
-        npc_portrait(pal, name)
+    """Only the wisp and the knight's own portrait are drawn here now.
+
+    Every human in the game comes from the GREEN WOODS sheet via
+    pack_villagers.py. Regenerating them from the old NPCS palettes would
+    silently overwrite those sheets with 64x80 two-frame ones, and the loader
+    - which expects 96x120 and three frames - would fail on the first NPC of
+    the first chapter. The palettes are kept below only because the wisp and
+    the portrait helper still read from that table's shape."""
     gen_wisp()
     gen_knight_portrait()
 
@@ -1083,6 +1087,36 @@ def gen_companion():
     print("  companion: idle 0-1, run 2-5, attack 6-7, hurt 8")
 
 # ==================================================================== ABILITY ICONS
+def gen_shard():
+    """A broken piece of the chiselled-out relief: grey stone with one carved
+    line still legible on it, and a warm edge where the old fire got in.
+
+    Four of these are hidden across the chapters. It is deliberately small and
+    dull - it has to disappear against a bush or a cave wall, and the chime is
+    what finds it, not the colour."""
+    frames = []
+    for f in range(4):
+        im = Image.new("RGBA", (18, 18), (0, 0, 0, 0))
+        d = ImageDraw.Draw(im)
+        # A chipped slab, not a neat rectangle.
+        d.polygon([(3, 4), (12, 2), (15, 7), (14, 14), (5, 15), (2, 10)],
+                  fill=(120, 114, 106), outline=(74, 70, 66))
+        d.polygon([(4, 5), (11, 3), (13, 7)], fill=(146, 140, 130))
+        # The carving: one arc of the old panel, still readable.
+        d.line([(6, 11), (8, 8), (11, 9)], fill=(58, 54, 52))
+        d.point((9, 12), fill=(58, 54, 52))
+        # A seam of banked fire that brightens and fades as it sits there.
+        glow = [(196, 128, 60), (232, 162, 78), (255, 196, 110), (232, 162, 78)][f]
+        d.line([(12, 4), (14, 8)], fill=glow)
+        d.point((13, 11), fill=glow)
+        frames.append(im)
+
+    sheet = Image.new("RGBA", (18 * len(frames), 18), (0, 0, 0, 0))
+    for i, im in enumerate(frames):
+        sheet.paste(im, (i * 18, 0))
+    save(sheet, "shard.png")
+
+
 def gen_ability_icons():
     """Market wares. Each icon is read at 48px on screen, so they lean on one
     strong silhouette rather than detail."""
@@ -1155,8 +1189,16 @@ def gen_particle():
     save(img, "particle.png", factor=1)
 
 # ==================================================================== MAIN
+# Only the chapters this script still owns. Chapter 1 and 4 are built by
+# pack_gandalf.py, chapter 2's backdrop by pack_forest.py and its tiles by
+# pack_gandalf.py - regenerating those here would silently overwrite them and
+# quietly revert two chapters to the old look. THEMES keeps the night and snow
+# palettes because the enemies and effects still read colours from them.
+OWNED_THEMES = ("cave", "lair")
+
 if __name__ == "__main__":
-    for theme_name, theme in THEMES.items():
+    for theme_name in OWNED_THEMES:
+        theme = THEMES[theme_name]
         gen_sky(theme_name, theme)
         gen_far(theme_name, theme)
         gen_near(theme_name, theme)
@@ -1169,19 +1211,16 @@ if __name__ == "__main__":
     gen_slime()
     gen_bat()
     gen_wraith()
-    gen_dragon()
     gen_fireball()
     gen_crystal()
-    gen_heart()
     gen_checkpoint()
     gen_spike()
     gen_gate()
     gen_fence()
     gen_lantern()
     gen_npcs()
-    gen_companion()
+    gen_shard()
     gen_ability_icons()
-    gen_armor()
     gen_shield_bubble()
     gen_light()
     gen_particle()

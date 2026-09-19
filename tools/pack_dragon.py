@@ -262,6 +262,29 @@ def build_frames(parts, roar_head):
     return out
 
 
+def build_portrait(base, roar_head):
+    """A head-and-horns portrait for the dialogue box, cut from the dragon's
+    own art so the face that speaks is the face you fought."""
+    head = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    head.alpha_composite(roar_head)
+    box = (0, 0, 24, 30)                      # head, horns and jaw
+    crop = head.crop(box)
+    bb = crop.getbbox()
+    if bb:
+        crop = crop.crop(bb)
+    k = max(1, min(96 // max(1, crop.width), 96 // max(1, crop.height)))
+    crop = crop.resize((crop.width * k, crop.height * k), Image.NEAREST)
+
+    panel = Image.new("RGBA", (96, 96), (0, 0, 0, 255))
+    for y in range(96):                        # the same dark vignette the
+        v = int(30 + 14 * (1 - y / 95))        # villagers' portraits use
+        for x in range(96):
+            panel.putpixel((x, y), (v + 6, v - 6, v - 2, 255))
+    panel.alpha_composite(crop, ((96 - crop.width) // 2, 96 - crop.height))
+    panel.save(os.path.join(OUT, "portrait_dragon.png"))
+    print("wrote portrait_dragon.png", panel.size)
+
+
 def main(src):
     sheet = Image.open(src).convert("RGBA")
     base = trimmed(sheet, CELL_RED)
@@ -277,6 +300,8 @@ def main(src):
     head_mask = Image.new("L", base.size, 0)
     ImageDraw.Draw(head_mask).polygon(POLYS["head"], fill=255)
     roar_head = apply_mask(head_canvas, np.asarray(head_mask) > 0)
+
+    build_portrait(base, roar_head)
 
     frames = build_frames(parts, roar_head)
     sheet_out = Image.new("RGBA", (FRAME_W * len(frames), FRAME_H), (0, 0, 0, 0))

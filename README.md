@@ -33,6 +33,7 @@ Then open `http://localhost:8080`.
 | `E` | Talk to the person you are standing next to, or open a merchant's stall |
 | `1` – `5` | Drink an ability out of your satchel |
 | `↑` `↓` / `ENTER` / `U` / `Q` | In the market: choose, buy, use, leave |
+| `↑` `↓` / `ENTER` | When someone asks you something: choose an answer |
 | `M` | Sound on / off |
 | `F` | Fullscreen on / off |
 | `ENTER` | Continue on the title and story screens |
@@ -45,7 +46,9 @@ The title screen is a menu: `↑` `↓` to choose, `ENTER` to select. **CONTROLS
 2. **The Misted Nightwood** — a dark forest you can barely see across, lit only by your lantern and what somebody else left burning. There is a graveyard, and a gravedigger who will tell you how many he has buried this month.
 3. **The Crystal Cave** — tiered platforming, bats, spikes, and two digs where people are still working.
 4. **The Frozen Peak** — slippery footing, ice wolves, and a snow forest under a distant castle.
-5. **The Dragon's Lair** — a boss fight against a red, membrane-winged dragon: it hovers and breathes fire, dives at you, then lands exhausted — and that landing is your opening.
+5. **The Dragon's Lair** — a boss fight against a red, membrane-winged dragon: it hovers and breathes fire, dives at you, then lands exhausted — and that landing is your opening. Odrin's stall is still standing at the mouth of it, with nobody behind it. The score builds as the dragon weakens, and stops dead the moment it goes down.
+
+At zero health the dragon does not die. It kneels, the music cuts out, and it asks you one question. What you answer is the end of the game.
 
 ## A world that is going about its business
 
@@ -57,6 +60,24 @@ The chapters are not corridors with monsters in them.
 - **Scenery.** Trees, bushes, grass and rocks are scattered by a generator seeded on the chapter name — so it looks hand-placed, and it is identical every time you replay it. One sparse band sits in front of the action, so the ground has depth.
 - **Sky.** Clouds drift, flocks of birds cross now and then, and each chapter has its own weather falling through it: leaves turning in the valley, snow on the peak, dust in the cave, mist in the nightwood, ash rising off the lair floor.
 - **The way out** of each chapter is a turning portal, not just a gate.
+
+## Three endings
+
+The dragon stops fighting at zero and asks whether the order ever meant the oath it swore. There are normally two answers. A third is only offered to a knight who earned it.
+
+| | How you get it |
+| --- | --- |
+| **THE LAST LIE** | Tell it the order meant every word. It knows better — it has been lied to before. It gets back up, and the fight was over in the other direction. A real ending: no life lost, straight back to the title. |
+| **THE TRUTH, LATE** | Admit nobody ever meant it. It accepts that, and lets go. The forest recovers — but you never learn what it was. |
+| **SEVERUS** | Name it. Only appears if you heard all six people who hold a piece of the story **and** put the chiselled-out panel back together. |
+
+Each ending has its own title card, its own closing music and its own colour. Nothing is tracked between runs — to see another one you play again.
+
+### The relief shards
+
+Gethin says the last panel of the cave reliefs was deliberately chiselled away. Four pieces of it are hidden, one per chapter, genuinely out of sight: behind foliage on open ground, or up on a ledge in the dark where your lantern has to reach before you can see anything at all.
+
+The game says nothing about them until you find your first. After that the HUD counts them and Gethin has more to say. The only thing that gives one away is a soft chime and a single spark when you are within about 150px — no marker, no arrow. Hearing it twice in the same place is the hint.
 
 ## Story mode
 
@@ -79,6 +100,7 @@ The cast all come from one sheet of six villagers, recoloured character by chara
 Every sound is synthesised live through the Web Audio API — there is not a single audio file, so the game costs nothing extra to download and still runs from `file://`.
 
 - **Music** is scored per level from pad layers (detuned saws through a moving filter), sub bass, an arpeggio and percussion (taiko in the lair, water drips in the cave).
+- **The lair theme grows.** It opens as a drone and a slow taiko, and lets another part in each time the dragon loses ground — a low choir at a quarter, a sub an octave down and four-to-the-bar taiko at a half, a thin line an octave up in the last quarter. When the dragon kneels it stops completely, and a single held tone carries the conversation.
 - **Layered sound effects**, built the way a sound designer builds one: transient, then body, then tail. Metal clangs come from inharmonic partials; the dragon's roar is a distorted saw stack pushed through vowel-like formant filters.
 - **Convolution reverb** with an impulse response generated per environment — the cave rings for 3.4 seconds and dark, snow is nearly dry at 0.9.
 - **Per-surface footsteps** — leaf litter, damp earth, stone, squeaking snow, ash — triggered by distance travelled so they always match the run.
