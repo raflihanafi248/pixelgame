@@ -7,6 +7,11 @@ const GROUND_ROWS = 2;
 const GROUND_Y = GAME_H - GROUND_TILE * GROUND_ROWS; // top surface of the ground
 const LIGHT_SIZE = 448; // must match light.png in tools/generate_assets.py
 
+// The rift the boss opens in the lair floor. The art is 48x96 with the crack
+// on its bottom edge, so it is hung off the ground line rather than centred.
+const RIFT_H = 96;
+const RIFT_SCALE = 2.0;
+
 // Platform tiers, tuned to the jump arc: a -700 jump under 1500 gravity rises
 // ~163px, so LOW is both reachable from the ground and high enough to walk
 // under; MID and HIGH are only reachable by hopping up from the tier below.
@@ -21,7 +26,7 @@ const DEATH_PENALTY = 25;
 const kn = (text) => ({ speaker: "Knight", portrait: "knight", text });
 const say = (speaker, portrait) => (text) => ({ speaker, portrait, text });
 
-// The six with a `voice` are the ones the dragon is listening for: each holds
+// The six with a `voice` are the ones the lair is listening for: each holds
 // a piece of what the order did, and it can tell whether you heard them.
 //
 // Helper: someone who lives here. They have no lines - they walk their patch,
@@ -377,12 +382,19 @@ const LEVELS = [
     name: "The Dragon's Lair",
     theme: "lair",
     width: 2100,
-    goalX: null, // the gate only appears once the dragon falls
-    boss: "dragon",
+    // Lit by two torches, an abandoned stall and whatever is standing at the
+    // far end. You hear it, and then you see the glow, and then you see it.
+    dark: true,
+    gloom: 0.95,        // darker than the nightwood or the cave
+    lightScale: 0.52,   // the knight's own torch does not reach far in here
+    torchLight: 0.7,
+    goalX: null, // there is no gate here - the chapter ends at a question
+    boss: "cthulhu",
     story: [
-      "The dragon looks at you, and knows the crest on your shield.",
-      '"You swore to keep this place," it hisses. "You broke that oath."',
-      "There is nothing left to say between you. Only fire.",
+      "The road ends at a door in the hillside, and the door is standing open.",
+      "Every telling of this story ends with a dragon. The carvings say a dragon.",
+      "Whatever is waiting at the end of the hall is not a dragon.",
+      "It looks up, and it knows the crest on your shield.",
     ],
     gaps: [],
     platforms: [{ x: 620, y: LOW }, { x: 1480, y: LOW }],
@@ -398,14 +410,19 @@ const LEVELS = [
 ];
 
 // --- the last exchange -----------------------------------------------------
-// The dragon stops fighting at zero and asks the only thing it still wants to
-// know. Yvane warned you it would, and that it can tell.
-const dr = say("The Dragon", "dragon");
-const sev = say("Severus", "dragon");
+// It stops fighting at zero and asks the only thing it still wants to know.
+// Yvane warned you it would, and that it can tell.
+//
+// Until the knight can put a name to it, it does not get one: the dialogue
+// box says nothing about who is speaking, which is the whole point of the
+// third answer.
+const dr = say("???", "cthulhu");
+const sev = say("Severus", "cthulhu");
 
-const DRAGON_QUESTION = [
+const LAST_QUESTION = [
   dr("Enough."),
   dr("You fight the way they taught you. Straight ahead, and without asking."),
+  dr("None of you has ever once stopped to look at what you were swinging at."),
   kn("Get up."),
   dr("No. I have carried this for nine hundred years and I am putting it down."),
   dr("One question first. I have asked it before and been lied to."),
@@ -422,7 +439,7 @@ const DRAGON_QUESTION = [
   },
 ];
 
-const DRAGON_REPLY = {
+const LAST_REPLY = {
   lie: [
     dr("...No."),
     dr("Yvane stood where you are standing and told me the truth, and I let her walk out."),
@@ -441,6 +458,7 @@ const DRAGON_REPLY = {
     dr("Say that again."),
     kn("Severus. First of the wardens. You are the only one who kept the promise."),
     sev("Nobody has used that name since there was anyone left who knew it."),
+    sev("They put a dragon on the wall because a dragon is a thing you can kill."),
     sev("They chiselled me off the wall so no one would find out what keeping it costs."),
     kn("I found the pieces. All four. It is back together."),
     sev("Then put it somewhere they cannot reach it, and let me go home."),
@@ -457,7 +475,7 @@ const ENDINGS = {
     music: "ending_bad",
     tint: 0x2a0f12,
     lines: [
-      "The fire takes you where you stand, and the wood does not mourn it.",
+      "The green takes you where you stand, and the wood does not mourn it.",
       "It settles back onto the stone and waits for the next one.",
       "It will ask them the same question. They will lie too.",
       "The last panel stays blank, and the name on it stays gone.",
@@ -470,7 +488,7 @@ const ENDINGS = {
     tint: 0x14200f,
     lines: [
       "It lets go, and nine hundred years go with it.",
-      "The fire goes back into the ground, and the ground takes it.",
+      "The green runs back down into the floor, and the floor closes over it.",
       "Lanterns relight along the ridge, one after another, all the way down.",
       "You never learned its name. The wardens kept that much from you.",
     ],
@@ -481,7 +499,7 @@ const ENDINGS = {
     music: "ending_secret",
     tint: 0x101828,
     lines: [
-      "The scales go first, then the horns, then the long years of it.",
+      "The wings go first, then the tendrils, then the long years of it.",
       "What is left on the stone is an old man in a warden's coat, and he is smiling.",
       "You set the four pieces back into the wall. The panel is whole.",
       "It shows a man walking into the dark on purpose, so that nobody else has to.",

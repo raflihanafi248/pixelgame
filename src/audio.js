@@ -66,7 +66,7 @@ const MUSIC = {
     arp: [3, 2, 1, 2, 3, 2, 1, 0], perc: null, arpVol: 0.09, padVol: 0.085, gain: 0.6,
   },
   // The only theme that grows. It opens thin - a drone and a slow taiko - and
-  // Sound.setIntensity() lets the rest of it in as the dragon loses ground.
+  // Sound.setIntensity() lets the rest of it in as the boss loses ground.
   lair: {
     bpm: 96, barsPerChord: 1, padWave: "sawtooth", arpWave: "sawtooth",
     chords: [[31, 43, 50, 55], [31, 43, 50, 56], [34, 46, 53, 58], [29, 41, 48, 53]],
@@ -549,37 +549,94 @@ const Sound = {
         break;
       }
 
-      // ---- dragon
-      case "fire": { // fireball: gas ignition whoosh over a low rumble
-        const out = this._chain(place, this.sfxBus, 0.4);
-        this._noise({ dur: 0.45, vol: 0.24 * v, freq: 480, to: 1800, q: 0.7, type: "lowpass", t0, dest: out });
-        this._noise({ dur: 0.35, vol: 0.14 * v, freq: 2600, to: 600, q: 1.2, t0: t0 + 0.03, dest: out });
-        this._osc({ type: "sawtooth", freq: 140, to: 60, dur: 0.4, vol: 0.12 * v, t0, dest: out });
+      // ---- the thing in the lair
+      case "charge": { // green light gathering at its claw, or under the floor
+        const out = this._chain(place, this.sfxBus, 0.45);
+        this._osc({ type: "sawtooth", freq: 180, to: 760, dur: 0.5, vol: 0.09 * v, t0, dest: out, curve: "linear" });
+        this._osc({ type: "square", freq: 91, to: 380, dur: 0.5, vol: 0.06 * v, t0, dest: out, curve: "linear" });
+        this._noise({ dur: 0.5, vol: 0.1 * v, freq: 500, to: 4200, q: 3.5, t0, dest: out });
         break;
       }
-      case "roar": {
+      case "lance": { // the bolt leaving: a crack, then a tearing hiss
+        const out = this._chain(place, this.sfxBus, 0.42);
+        this._noise({ dur: 0.06, vol: 0.34 * v, freq: 4200, to: 1400, q: 0.8, t0, dest: out });
+        this._noise({ dur: 0.5, vol: 0.2 * v, freq: 2800, to: 700, q: 1.6, t0: t0 + 0.02, dest: out });
+        this._osc({ type: "sawtooth", freq: 620, to: 130, dur: 0.34, vol: 0.13 * v, t0, dest: out });
+        this._osc({ type: "sine", freq: 96, to: 44, dur: 0.5, vol: 0.18 * v, t0, dest: out, curve: "linear" });
+        break;
+      }
+      case "boltHit": {
+        const out = this._chain(place, this.sfxBus, 0.35);
+        this._noise({ dur: 0.18, vol: 0.22 * v, freq: 2400, to: 380, q: 1.1, t0, dest: out });
+        this._osc({ type: "triangle", freq: 340, to: 90, dur: 0.22, vol: 0.12 * v, t0, dest: out });
+        break;
+      }
+      case "lash": { // wet rope through air, and the snap at the end of it
+        const out = this._chain(place, this.sfxBus, 0.4);
+        this._noise({ dur: 0.26, vol: 0.2 * v, freq: 700, to: 2900, q: 1.4, t0, dest: out });
+        this._noise({ dur: 0.08, vol: 0.3 * v, freq: 3400, to: 900, q: 0.9, t0: t0 + 0.2, dest: out });
+        this._osc({ type: "sawtooth", freq: 130, to: 58, dur: 0.3, vol: 0.12 * v, t0: t0 + 0.16, dest: out });
+        break;
+      }
+      case "rift": { // stone giving way, and something coming up through it
         const out = this._chain(place, this.sfxBus, 0.6);
-        // distorted growl through vowel-like formants, plus a breath layer
+        this._noise({ dur: 0.7, vol: 0.24 * v, freq: 240, to: 70, q: 0.6, type: "lowpass", t0, dest: out });
+        this._osc({ type: "sine", freq: 58, to: 27, dur: 0.9, vol: 0.3 * v, t0, dest: out, curve: "linear" });
+        for (let i = 0; i < 5; i++) { // grit coming off the edges of the crack
+          this._noise({ dur: 0.14, vol: 0.1 * v, freq: rand(500, 1500), to: 200,
+                        q: 1.3, t0: t0 + 0.12 + i * rand(0.05, 0.13), dest: out });
+        }
+        this._osc({ type: "sawtooth", freq: 320, to: 760, dur: 0.5, vol: 0.05 * v, t0: t0 + 0.1, dest: out, curve: "linear" });
+        break;
+      }
+      case "slam": { // it comes down out of the air onto the floor
+        const out = this._chain(place, this.sfxBus, 0.7);
+        this._osc({ type: "sine", freq: 120, to: 26, dur: 0.8, vol: 0.4 * v, t0, dest: out, curve: "linear" });
+        this._noise({ dur: 0.5, vol: 0.3 * v, freq: 700, to: 90, q: 0.6, type: "lowpass", t0, dest: out });
+        this._noise({ dur: 0.1, vol: 0.26 * v, freq: 2600, to: 700, q: 0.9, t0, dest: out });
+        for (let i = 0; i < 6; i++) {
+          this._noise({ dur: 0.16, vol: 0.1 * v, freq: rand(400, 1200), to: 160,
+                        q: 1.4, t0: t0 + 0.06 + i * rand(0.04, 0.12), dest: out });
+        }
+        break;
+      }
+      case "scream": {
+        // Not a roar. A roar comes out of a throat and has a pitch you can
+        // name; this is three of them at once, bent apart, with the bottom
+        // of it below where the speakers can help you.
+        const out = this._chain(place, this.sfxBus, 0.75);
         const shaper = this.ctx.createWaveShaper();
         shaper.curve = this.distCurve;
         shaper.connect(out);
-        const growl = this.ctx.createGain();
-        growl.gain.value = 0.35 * v;
-        growl.connect(shaper);
-        for (const [f, det] of [[70, 0], [70, 14], [104, -9]]) {
-          this._osc({ type: "sawtooth", freq: f * rand(0.95, 1.06), to: f * 0.62, dur: 1.1, vol: 0.5, t0, dest: growl, detune: det, curve: "linear" });
+        const throat = this.ctx.createGain();
+        throat.gain.value = 0.3 * v;
+        throat.connect(shaper);
+        // Three voices that do not agree on a note and never settle on one.
+        for (const [f, det] of [[58, 0], [77, 19], [87, -26]]) {
+          this._osc({ type: "sawtooth", freq: f * rand(0.94, 1.08), to: f * rand(1.3, 1.7),
+                      dur: 1.4, vol: 0.45, t0, dest: throat, detune: det, curve: "linear" });
         }
-        for (const ff of [520, 1180, 2400]) {
+        // Formants placed for a mouth that is the wrong shape for a mouth.
+        for (const ff of [340, 900, 1560, 3100]) {
           const form = this.ctx.createBiquadFilter();
           form.type = "bandpass";
-          form.frequency.value = ff * rand(0.9, 1.1);
-          form.Q.value = 6;
+          form.frequency.value = ff * rand(0.88, 1.12);
+          form.Q.value = 8;
           const fg = this.ctx.createGain();
-          fg.gain.value = 0.5 * v;
+          fg.gain.value = 0.42 * v;
           form.connect(fg); fg.connect(out);
-          this._noise({ dur: 1.0, vol: 0.5, freq: ff, to: ff * 0.7, q: 6, t0, dest: form });
+          this._noise({ dur: 1.3, vol: 0.5, freq: ff, to: ff * rand(1.2, 1.9), q: 8, t0, dest: form });
         }
-        this._osc({ type: "sine", freq: 46, to: 28, dur: 1.5, vol: 0.3 * v, t0, dest: out, curve: "linear" });
+        this._osc({ type: "sine", freq: 33, to: 19, dur: 2.0, vol: 0.34 * v, t0, dest: out, curve: "linear" });
+        break;
+      }
+      case "wings": { // it leaves the floor
+        const out = this._chain(place, this.sfxBus, 0.5);
+        for (let i = 0; i < 3; i++) {
+          this._noise({ dur: 0.3, vol: 0.18 * v, freq: 180, to: 900, q: 0.7,
+                        type: "lowpass", t0: t0 + i * 0.22, dest: out });
+        }
+        this._osc({ type: "sine", freq: 70, to: 40, dur: 0.8, vol: 0.14 * v, t0, dest: out, curve: "linear" });
         break;
       }
       case "bossHit": {
@@ -666,6 +723,8 @@ const Sound = {
     } else if (theme === "lair") {
       mkBed({ freq: 120, q: 0.8, type: "lowpass", vol: 0.16, lfoRate: 0.03, lfoDepth: 40 });
       mkBed({ freq: 900, q: 0.6, type: "bandpass", vol: 0.04, lfoRate: 0.09, lfoDepth: 300 });
+      // Under all of it, something too slow and too low to be the room.
+      mkBed({ freq: 54, q: 0.9, type: "lowpass", vol: 0.2, lfoRate: 0.018, lfoDepth: 22 });
     }
 
     // Occasional one-shots on top of the bed: a bird, a water drip, an ember.

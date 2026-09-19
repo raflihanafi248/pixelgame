@@ -12,6 +12,7 @@ game actually loads.
 import math
 import os
 import random
+import zlib
 
 from PIL import Image, ImageDraw
 
@@ -20,6 +21,12 @@ os.makedirs(OUT, exist_ok=True)
 
 SCALE = 2
 OUTL = (20, 14, 18)  # shared near-black outline colour
+
+# Python randomises str.hash() per process, so seeding a generator off one
+# made this script draw a different-looking tile every run. crc32 does not.
+def name_seed(name):
+    return zlib.crc32(name.encode())
+
 
 def canvas(w, h):
     return Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -233,7 +240,7 @@ def gen_ground(name, th):
     d = ImageDraw.Draw(img)
     d.rectangle([0, 0, w - 1, 4], fill=top)
     d.rectangle([0, 0, w - 1, 1], fill=top3)
-    rnd = random.Random(hash(name) % 999)
+    rnd = random.Random(name_seed(name) % 999)
     for x in range(0, w, 3):
         if rnd.random() < 0.5:
             d.point((x, 2), fill=top2)
@@ -251,7 +258,7 @@ def gen_ground_deep(name, th):
     _, _, _, mid, mid2, dark, deep = th["ground"]
     img = canvas(w, h)
     d = ImageDraw.Draw(img)
-    rnd = random.Random(hash(name) % 777)
+    rnd = random.Random(name_seed(name) % 777)
     d.rectangle([0, 0, w - 1, 12], fill=mid)
     d.rectangle([0, 13, w - 1, 23], fill=dark)
     d.rectangle([0, 24, w - 1, 31], fill=deep)
@@ -268,7 +275,7 @@ def gen_platform(name, th):
     d.rectangle([0, 0, w - 1, 4], fill=top)
     d.rectangle([0, 0, w - 1, 1], fill=top3)
     d.rectangle([0, 5, w - 1, 7], fill=top2)
-    rnd = random.Random(hash(name) % 555)
+    rnd = random.Random(name_seed(name) % 555)
     for _ in range(18):
         d.point((rnd.randint(2, w - 3), rnd.randint(9, h - 5)), fill=rnd.choice([mid2, dark]))
     d.rectangle([0, h - 5, w - 1, h - 1], fill=dark)
@@ -382,258 +389,6 @@ def gen_wraith():
         frames.append(img)
     sheet_of(frames, w, h, "wraith.png")
 
-# ==================================================================== BOSS: FOREST DRAGON
-D_W, D_H = 128, 96
-
-# Red dragon palette
-DS_SHADOW = (58, 10, 16)
-DS_DARK = (96, 20, 26)
-DS_MID = (154, 38, 38)
-DS_LIGHT = (198, 64, 52)
-DS_HI = (236, 116, 86)
-D_BELLY = (226, 180, 122)
-D_BELLY_SH = (194, 144, 94)
-D_MEMB = (150, 46, 50)
-D_MEMB_LIGHT = (198, 92, 82)
-D_BONE = (238, 226, 198)
-D_EYE = (255, 208, 70)
-D_FIRE = [(255, 244, 200), (255, 206, 96), (255, 150, 48), (226, 86, 30)]
-
-def _rot(px, py, ox, oy, ang):
-    c, s_ = math.cos(ang), math.sin(ang)
-    dx, dy = px - ox, py - oy
-    return (ox + dx * c - dy * s_, oy + dx * s_ + dy * c)
-
-def _bez(p0, p1, p2, steps=10):
-    """Quadratic curve, used as the spine for necks and tails."""
-    out = []
-    for i in range(steps + 1):
-        t = i / steps
-        u = 1 - t
-        out.append((u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0],
-                    u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]))
-    return out
-
-def _limb(d, pts, r0, r1, fill, hi=None):
-    """A tapering chain of circles - reads as a neck, a tail or a leg."""
-    n = len(pts) - 1
-    for i, (x, y) in enumerate(pts):
-        t = i / max(1, n)
-        r = r0 + (r1 - r0) * t
-        d.ellipse([x - r, y - r, x + r, y + r], fill=fill)
-        if hi and r > 2:
-            d.ellipse([x - r * 0.55, y - r * 0.9, x + r * 0.15, y - r * 0.25], fill=hi)
-
-def _wing(d, sx, sy, ang, span, front):
-    """Membrane wing: four finger bones from the shoulder with a scalloped
-    membrane stretched between them. `ang` sweeps the whole hand through the
-    flap, so one parameter drives the entire cycle."""
-    memb = D_MEMB_LIGHT if front else D_MEMB
-    bone = DS_LIGHT if front else DS_DARK
-    fingers = [(-0.95, 1.00), (-0.42, 1.05), (0.08, 0.94), (0.55, 0.70)]
-    tips = [(sx + math.cos(ang + fa) * span * fl,
-             sy + math.sin(ang + fa) * span * fl) for fa, fl in fingers]
-
-    poly = [(sx, sy)]
-    for i, tip in enumerate(tips):
-        poly.append(tip)
-        if i < len(tips) - 1:
-            nxt = tips[i + 1]
-            mx, my = (tip[0] + nxt[0]) / 2, (tip[1] + nxt[1]) / 2
-            poly.append((mx + (sx - mx) * 0.22, my + (sy - my) * 0.22))  # scallop
-    poly.append((sx + math.cos(ang + 0.9) * span * 0.3,
-                 sy + math.sin(ang + 0.9) * span * 0.3))
-    d.polygon(poly, fill=memb)
-
-    # a lighter panel near the leading edge gives the membrane some depth
-    d.polygon([(sx, sy), tips[0], tips[1],
-               (sx + math.cos(ang - 0.4) * span * 0.35,
-                sy + math.sin(ang - 0.4) * span * 0.35)],
-              fill=D_MEMB_LIGHT if front else (168, 62, 62))
-
-    for tip in tips:
-        d.line([(sx, sy), tip], fill=bone, width=2)
-        d.ellipse([tip[0] - 1.5, tip[1] - 1.5, tip[0] + 1.5, tip[1] + 1.5], fill=D_BONE)
-    d.ellipse([sx - 5, sy - 5, sx + 5, sy + 5], fill=DS_MID if front else DS_DARK)
-
-def dragon_frame(wing=0.0, neck=0.0, jaw=0.0, tail=0.0, bob=0.0, legs=0.0,
-                 lean=0.0, breath=0.0, hurt=False, collapse=0.0):
-    """One pose. Every limb is driven by a parameter so the animation frames
-    are interpolated poses rather than hand-shifted copies."""
-    img = canvas(D_W, D_H)
-    d = ImageDraw.Draw(img)
-
-    body_x, body_y = 54, 56 + bob + collapse * 26
-    wing_ang = -2.0 + wing * 1.75          # -2.0 rad = raised, ~-0.25 = swept down
-    lean_y = lean * 10
-
-    # ---- far wing (behind the body, darker)
-    _wing(d, body_x + 2, body_y - 12 + lean_y, wing_ang + 0.22, 40 - collapse * 14, front=False)
-
-    # ---- tail: a long curve that lags behind the body
-    tail_end = (4 + tail * 4, 34 + tail * 20 + collapse * 20)
-    tail_pts = _bez((body_x - 14, body_y + 4), (30, body_y + 10 + tail * 10), tail_end, 12)
-    _limb(d, tail_pts, 9, 1.5, DS_MID, DS_LIGHT)
-    d.polygon([tail_end,
-               (tail_end[0] - 9, tail_end[1] - 9),
-               (tail_end[0] + 3, tail_end[1] - 3)], fill=D_MEMB)
-
-    # ---- body
-    d.ellipse([body_x - 25, body_y - 17 + lean_y, body_x + 25, body_y + 19 + lean_y], fill=DS_MID)
-    d.ellipse([body_x - 25, body_y - 17 + lean_y, body_x + 22, body_y + 2 + lean_y], fill=DS_LIGHT)
-    d.ellipse([body_x - 18, body_y + 1 + lean_y, body_x + 20, body_y + 19 + lean_y], fill=D_BELLY)
-    for i in range(5):  # belly scutes
-        sx0 = body_x - 15 + i * 8
-        d.line([(sx0, body_y + 4 + lean_y), (sx0, body_y + 17 + lean_y)], fill=D_BELLY_SH)
-
-    # ---- hind legs
-    tuck = legs
-    for i, (lx, spread) in enumerate([(body_x - 8, -1), (body_x + 12, 1)]):
-        hip = (lx, body_y + 12 + lean_y)
-        knee = (lx + spread * 6 - tuck * spread * 4, body_y + 22 + lean_y - tuck * 12)
-        foot = (lx + spread * 4, body_y + 36 + lean_y - tuck * 22 + collapse * 6)
-        _limb(d, _bez(hip, knee, foot, 6), 6, 3.5,
-              DS_DARK if i == 0 else DS_MID)
-        if tuck < 0.5:  # claws only read when the leg is extended
-            for c in range(3):
-                cx = foot[0] - 4 + c * 4
-                d.line([(cx, foot[1]), (cx - 1, foot[1] + 4)], fill=D_BONE, width=1)
-
-    # ---- neck and head
-    head_x = 100 + neck * 6
-    head_y = 26 - neck * 12 + lean_y + collapse * 30
-    neck_pts = _bez((body_x + 16, body_y - 8 + lean_y),
-                    (body_x + 34, body_y - 26 - neck * 8 + lean_y),
-                    (head_x - 8, head_y + 4), 10)
-    _limb(d, neck_pts, 10, 6, DS_MID, DS_LIGHT)
-
-    d.ellipse([head_x - 11, head_y - 8, head_x + 11, head_y + 8], fill=DS_MID)
-    d.ellipse([head_x - 11, head_y - 8, head_x + 7, head_y + 1], fill=DS_LIGHT)
-    d.polygon([(head_x + 4, head_y - 4), (head_x + 20, head_y + 1),
-               (head_x + 4, head_y + 5)], fill=DS_MID)  # snout
-    d.polygon([(head_x + 4, head_y - 3), (head_x + 19, head_y + 1),
-               (head_x + 6, head_y + 0)], fill=DS_LIGHT)
-
-    # horns sweeping back
-    for hy, hl in [(-6, 15), (-2, 11)]:
-        d.polygon([(head_x - 4, head_y + hy), (head_x - 4 - hl, head_y + hy - hl * 0.55),
-                   (head_x - 1, head_y + hy + 3)], fill=D_BONE)
-    d.polygon([(head_x - 8, head_y + 4), (head_x - 17, head_y + 9),
-               (head_x - 7, head_y + 8)], fill=D_MEMB)  # jaw frill
-
-    # jaw
-    jo = jaw * 11
-    d.polygon([(head_x + 3, head_y + 3), (head_x + 19, head_y + 2 + jo * 0.5),
-               (head_x + 4, head_y + 6 + jo)], fill=DS_DARK)
-    if jaw > 0.12:
-        d.polygon([(head_x + 4, head_y + 4), (head_x + 17, head_y + 3 + jo * 0.5),
-                   (head_x + 5, head_y + 5 + jo)], fill=(72, 16, 20))
-        for tx in range(6, 16, 4):  # teeth
-            d.line([(head_x + tx, head_y + 4), (head_x + tx, head_y + 7)], fill=D_BONE)
-
-    eye_h = 4 if not hurt else 2
-    d.ellipse([head_x + 1, head_y - 4, head_x + 6, head_y - 4 + eye_h], fill=D_EYE)
-    d.line([(head_x + 3, head_y - 4), (head_x + 3, head_y - 4 + eye_h)], fill=(30, 10, 10))
-    d.ellipse([head_x + 13, head_y - 1, head_x + 15, head_y + 1], fill=DS_SHADOW)  # nostril
-
-    # ---- spine ridge from head to tail
-    ridge = neck_pts[2:] + [(body_x + 8, body_y - 16 + lean_y),
-                            (body_x - 4, body_y - 17 + lean_y),
-                            (body_x - 16, body_y - 12 + lean_y)]
-    for i, (rx, ry) in enumerate(ridge[::2]):
-        h = 5 + (i % 3)
-        d.polygon([(rx - 3, ry), (rx, ry - h), (rx + 3, ry)], fill=D_BONE)
-
-    # ---- near wing (in front, catches the light)
-    _wing(d, body_x + 6, body_y - 14 + lean_y, wing_ang, 46 - collapse * 16, front=True)
-
-    # ---- fire breath
-    if breath > 0:
-        mx, my = head_x + 18, head_y + 4 + jo * 0.6
-        for i in range(int(6 * breath) + 1):
-            t = i / 6
-            rx = 5 + t * 16 * breath
-            ry = 3 + t * 11 * breath
-            cx = mx + t * 34 * breath
-            col = D_FIRE[min(3, int(t * 3.2))]
-            d.ellipse([cx - rx, my - ry + t * 3, cx + rx, my + ry + t * 3], fill=col)
-
-    if hurt:
-        overlay = Image.new("RGBA", (D_W, D_H), (255, 90, 80, 120))
-        img = Image.alpha_composite(
-            img, Image.composite(overlay, Image.new("RGBA", (D_W, D_H), (0, 0, 0, 0)), img.split()[3]))
-    return img
-
-def gen_dragon():
-    frames = []
-
-    # fly: a full flap cycle - the body rises as the wings come down
-    for i in range(6):
-        ph = i / 6
-        w = math.sin(ph * math.tau)
-        frames.append(dragon_frame(
-            wing=w, bob=-w * 5, neck=0.12 * math.sin(ph * math.tau + 1.0),
-            tail=0.5 * math.sin(ph * math.tau - 0.8), legs=0.65, jaw=0.05))
-
-    # roar: rear back, chest up, jaw opens, fire
-    roar = [
-        dict(wing=-0.85, neck=-0.3, jaw=0.05, tail=-0.4, bob=2, legs=0.5),
-        dict(wing=-0.2, neck=0.5, jaw=0.15, tail=-0.1, bob=-2, legs=0.6),
-        dict(wing=0.6, neck=0.9, jaw=0.55, tail=0.3, bob=-5, legs=0.7),
-        dict(wing=0.9, neck=0.8, jaw=1.0, tail=0.5, bob=-4, legs=0.7, breath=0.55),
-        dict(wing=0.7, neck=0.6, jaw=1.0, tail=0.4, bob=-2, legs=0.65, breath=1.0),
-        dict(wing=0.1, neck=0.25, jaw=0.5, tail=0.1, bob=0, legs=0.6, breath=0.35),
-    ]
-    frames += [dragon_frame(**p) for p in roar]
-
-    # swoop: wings swept back, body pitched forward, legs tucked
-    swoop = [
-        dict(wing=-0.6, neck=0.4, jaw=0.3, tail=-0.5, legs=0.9, lean=-0.4, bob=-3),
-        dict(wing=0.25, neck=0.15, jaw=0.5, tail=-0.2, legs=1.0, lean=-0.2, bob=0),
-        dict(wing=0.95, neck=-0.1, jaw=0.6, tail=0.2, legs=1.0, lean=0.2, bob=3),
-        dict(wing=0.4, neck=0.1, jaw=0.4, tail=0.5, legs=0.95, lean=0.0, bob=1),
-    ]
-    frames += [dragon_frame(**p) for p in swoop]
-
-    # hurt
-    frames.append(dragon_frame(wing=-0.5, neck=-0.55, jaw=0.7, tail=-0.6, bob=3, legs=0.5, hurt=True))
-    frames.append(dragon_frame(wing=-0.2, neck=-0.3, jaw=0.4, tail=0.3, bob=1, legs=0.55, hurt=True))
-
-    # death: wings fold, head drops, body sinks
-    for i in range(4):
-        t = (i + 1) / 4
-        frames.append(dragon_frame(
-            wing=-0.9 + t * 0.5, neck=-0.4 - t * 0.6, jaw=0.6 - t * 0.5,
-            tail=0.3 * (1 - t), bob=t * 6, legs=0.2, collapse=t))
-
-    # rest: grounded, wings folded, breathing
-    frames.append(dragon_frame(wing=0.95, neck=-0.15, jaw=0.08, tail=0.15, bob=0, legs=0.05))
-    frames.append(dragon_frame(wing=0.95, neck=-0.1, jaw=0.14, tail=0.25, bob=-2, legs=0.05))
-
-    cols = 6
-    rows = (len(frames) + cols - 1) // cols
-    sheet = canvas(cols * D_W, rows * D_H)
-    for i, f in enumerate(frames):
-        sheet.paste(f, ((i % cols) * D_W, (i // cols) * D_H), f)
-    save(sheet, "dragon.png")
-    print(f"  dragon: {len(frames)} frames, {cols}x{rows} grid, frame {D_W*SCALE}x{D_H*SCALE}")
-    print("  fly 0-5, roar 6-11, swoop 12-15, hurt 16-17, death 18-21, rest 22-23")
-
-def gen_fireball():
-    w, h = 20, 16
-    frames = []
-    for phase in (0, 1):
-        img = canvas(w, h)
-        d = ImageDraw.Draw(img)
-        wob = phase * 2
-        d.ellipse([0, 4 + wob // 2, 12, 12 - wob // 2], fill=(255, 120, 40, 170))
-        d.ellipse([4, 3, 17, 13], fill=(255, 150, 50))
-        d.ellipse([7, 5, 16, 11], fill=(255, 208, 90))
-        d.ellipse([10, 6, 15, 10], fill=(255, 250, 210))
-        frames.append(img)
-    sheet_of(frames, w, h, "fireball.png")
-
-# ==================================================================== ITEMS / UI / PROPS
 def gen_crystal():
     w, h = 18, 18
     frames = []
@@ -1197,6 +952,11 @@ def gen_particle():
 OWNED_THEMES = ("cave", "lair")
 
 if __name__ == "__main__":
+    # Every texture in here is scattered with random(), so without a fixed seed
+    # a rerun rewrites half of assets/ with noise that looks identical and
+    # diffs as a change. Seeded, running this twice is genuinely a no-op.
+    random.seed(20240509)
+
     for theme_name in OWNED_THEMES:
         theme = THEMES[theme_name]
         gen_sky(theme_name, theme)
@@ -1211,7 +971,6 @@ if __name__ == "__main__":
     gen_slime()
     gen_bat()
     gen_wraith()
-    gen_fireball()
     gen_crystal()
     gen_checkpoint()
     gen_spike()

@@ -6,7 +6,7 @@ A 2D pixel-art action platformer in five levels, built with [Phaser.js](https://
 
 You are the last of the forest wardens. The leaves are falling too early, the warden's lanterns are going out on their own, and something very old is stirring at the heart of the wood.
 
-The trail leads you out of the autumn forest, through the mist of the nightwood, down into the ruins of a crystal cave, up to a freezing peak — and finally to the lair of the **Forest Dragon**. The dragon is no mindless monster: it recognises the crest on your shield, and it means to collect on an oath that men once broke.
+The trail leads you out of the autumn forest, through the mist of the nightwood, down into the ruins of a crystal cave, up to a freezing peak — and finally to what the villages have always called the **dragon's lair**. Every telling of the story ends with a dragon. The carvings say a dragon. The thing standing at the end of that hall is not a dragon, and it is not a mindless monster either: it recognises the crest on your shield, and it means to collect on an oath that men once broke.
 
 The ending is deliberately left open.
 
@@ -46,9 +46,24 @@ The title screen is a menu: `↑` `↓` to choose, `ENTER` to select. **CONTROLS
 2. **The Misted Nightwood** — a dark forest you can barely see across, lit only by your lantern and what somebody else left burning. There is a graveyard, and a gravedigger who will tell you how many he has buried this month.
 3. **The Crystal Cave** — tiered platforming, bats, spikes, and two digs where people are still working.
 4. **The Frozen Peak** — slippery footing, ice wolves, and a snow forest under a distant castle.
-5. **The Dragon's Lair** — a boss fight against a red, membrane-winged dragon: it hovers and breathes fire, dives at you, then lands exhausted — and that landing is your opening. Odrin's stall is still standing at the mouth of it, with nobody behind it. The score builds as the dragon weakens, and stops dead the moment it goes down.
+5. **The Dragon's Lair** — the darkest chapter in the game, and the only one where your own torch barely reaches. Odrin's stall is still standing at the mouth of it, with nobody behind it. A green glow at the far end resolves, as you get close, into something with wings and a face full of tendrils. It looks up when you are near enough to be worth looking up for, and screams.
 
-At zero health the dragon does not die. It kneels, the music cuts out, and it asks you one question. What you answer is the end of the game.
+### What it does
+
+It has six moves and picks between them by how much of it you have left, never the same one three times running:
+
+| Move | What you see | From |
+| --- | --- | --- |
+| **Stalk** | it walks you down on foot, and standing next to it costs you | always |
+| **Void lance** | green light gathers at its claw, then a bolt across the hall — one, then two, then a three-way fan | always |
+| **Lash** | tentacles out to twice a sword's reach; jump it | always |
+| **Dive** | it takes to the air, hangs over a marked spot, and comes down on it | below two thirds |
+| **Rift** | it screams and the floor splits — tendrils come up out of the stone, walking towards you | below two thirds |
+| **Brood** | the same scream, answered: half-size copies of it drop out of the dark | below a third |
+
+The crack in the floor glows for a beat before anything comes out of it, and the dive marks the ground before it drops — every attack is readable if you are watching. It is only reachable with a sword while it is on the ground, and the pause after a move is your opening. The score builds as it weakens, and stops dead the moment it goes down.
+
+At zero health it does not die. It kneels, the music cuts out, and it asks you one question. What you answer is the end of the game.
 
 ## A world that is going about its business
 
@@ -63,7 +78,7 @@ The chapters are not corridors with monsters in them.
 
 ## Three endings
 
-The dragon stops fighting at zero and asks whether the order ever meant the oath it swore. There are normally two answers. A third is only offered to a knight who earned it.
+It stops fighting at zero and asks whether the order ever meant the oath it swore. There are normally two answers. A third is only offered to a knight who earned it. The dialogue box calls it `???` until you can put a name to it.
 
 | | How you get it |
 | --- | --- |
@@ -88,10 +103,10 @@ What they tell you is the plot the chapter cards only hint at:
 - **Elder Maren** sends you east and explains that a warden's lantern only dies when the pact it was lit for is broken.
 - **Bram** the woodcutter has stopped cutting: the oak he struck this morning bled warm.
 - **The Wisp**, in the nightwood, was a warden once too — and points you at the stone beneath the roots.
-- **Gethin** reads the cave reliefs: a dragon gave up its fire so the valley could grow, men swore to guard it, and the last panel was chiselled away.
-- **Yvane**, freezing on the peak, reached the lair first. The dragon let her go, and asked her a question she could not answer.
+- **Gethin** reads the cave reliefs: a dragon gave up its fire so the valley could grow, men swore to guard it, and the last panel was chiselled away. A dragon is what people read into the carving, because a dragon is a thing you can kill.
+- **Yvane**, freezing on the peak, reached the lair first. It let her go, and asked her a question she could not answer.
 - **The Gravedigger**, in the nightwood, has buried nine this month, and not one of them from an animal. They walk in from the west and lie down.
-- **Odrin the Pedlar** keeps a stall in every chapter — including one at the mouth of the dragon's lair, where he tells you to spend it all, because you cannot take crystals where you are going. Talk to him once and he introduces himself; after that, `E` goes straight to the stall.
+- **Odrin the Pedlar** keeps a stall in every chapter — including one at the mouth of the lair, where he tells you to spend it all, because you cannot take crystals where you are going. Talk to him once and he introduces himself; after that, `E` goes straight to the stall.
 
 The cast all come from one sheet of six villagers, recoloured character by character, and each portrait is cropped from that character's own head — so the face in the dialogue box is the face standing on the road.
 
@@ -100,8 +115,8 @@ The cast all come from one sheet of six villagers, recoloured character by chara
 Every sound is synthesised live through the Web Audio API — there is not a single audio file, so the game costs nothing extra to download and still runs from `file://`.
 
 - **Music** is scored per level from pad layers (detuned saws through a moving filter), sub bass, an arpeggio and percussion (taiko in the lair, water drips in the cave).
-- **The lair theme grows.** It opens as a drone and a slow taiko, and lets another part in each time the dragon loses ground — a low choir at a quarter, a sub an octave down and four-to-the-bar taiko at a half, a thin line an octave up in the last quarter. When the dragon kneels it stops completely, and a single held tone carries the conversation.
-- **Layered sound effects**, built the way a sound designer builds one: transient, then body, then tail. Metal clangs come from inharmonic partials; the dragon's roar is a distorted saw stack pushed through vowel-like formant filters.
+- **The lair theme grows.** It opens as a drone and a slow taiko, and lets another part in each time the boss loses ground — a low choir at a quarter, a sub an octave down and four-to-the-bar taiko at a half, a thin line an octave up in the last quarter. When it kneels the theme stops completely, and a single held tone carries the conversation.
+- **Layered sound effects**, built the way a sound designer builds one: transient, then body, then tail. Metal clangs come from inharmonic partials; the boss's scream is three distorted saw stacks that do not agree on a note, pushed through formant filters placed for a mouth that is the wrong shape for a mouth.
 - **Convolution reverb** with an impulse response generated per environment — the cave rings for 3.4 seconds and dark, snow is nearly dry at 0.9.
 - **Per-surface footsteps** — leaf litter, damp earth, stone, squeaking snow, ash — triggered by distance travelled so they always match the run.
 - **Stereo placement** from world position: an enemy to your left sounds to your left, and grows quieter and more muffled with distance.
@@ -144,7 +159,7 @@ index.html           the game page
 src/levels.js        the five levels, their story text and every conversation
 src/audio.js         audio engine (music, effects, ambience, reverb)
 src/dialogue.js      the conversation box, and the NPCs and villagers who live on the road
-src/entities.js      Player (combo, dash, health), Enemy, Dragon (boss)
+src/entities.js      Player (combo, dash, health), Enemy, Cthulhu (boss), Broodling
 src/market.js        the abilities, the buff timers and the stall UI
 src/scenes.js        boot, title, story cards, gameplay, game over, ending
 src/main.js          Phaser configuration
@@ -163,7 +178,7 @@ python3 tools/pack_gandalf.py   <gandalf-pack> <hp-bar-pack>
                                                       # chapters 1 and 4, all the decor, the HUD
 python3 tools/pack_forest.py    <background-forest>   # chapter 2's parallax
 python3 tools/pack_villagers.py <green-woods-pack>    # every NPC and their portrait
-python3 tools/pack_dragon.py    <dragon-sprite.png>   # the boss, cut into parts and animated
+python3 tools/pack_cthulhu.py   <free_cthulu/>        # the boss sheet, its lance, its rifts, its face
 python3 tools/embed_assets.py                         # pack every PNG into src/assets_data.js
 ```
 
@@ -177,5 +192,7 @@ Each packer is written to be re-runnable: they always rebuild from the original 
 - **Chapters 1 and 4, all the set dressing and the HUD** come from the **GandalfHardcore Free Platformer Assets** and **GandalfHardcore HP bar** packs — the Autumn and Winter parallax stacks, the floor tiles, the decor sheet (tents, crates, gravestones, boulders, bushes), the animated campfire, torches and portal, the clouds and birds, and the orb-and-bars HUD.
 - **Chapter 2** uses **BACKGROUND FOREST** by Ilaria Lazzarotto: nine aligned layers of one dark forest scene, flattened into the game's three.
 - **Every person in the game** comes from **GREEN WOODS Part II** by Ilaria Lazzarotto — six villagers in a five-step ramp, which is what makes them re-colourable into a whole cast.
-- **The dragon** is the supplied sprite, cut into wing, tail, head, legs and body and animated joint by joint; its roar borrows the open maw from the same pack's grey variant, recoloured onto the red palette.
+- **The boss** is the `free_cthulu v1` pack. All seven of its animations are in the game and all seven are a move. Two more assets are cut out of those same frames rather than drawn: the green lance is the beam from `1atk` with the body and wings masked away, and the rift that opens in the floor is the `2atk` tentacles stood on end, outlined in the lance's own green so they read coming out of unlit stone.
 - Everything else (enemies, items, effects, the cave and lair themes) is generated by `tools/generate_assets.py`.
+
+> **Check the licences before you ship this anywhere.** The knight pack, both GandalfHardcore packs and both Ilaria Lazzarotto packs all state their terms and all of them allow commercial use (GandalfHardcore's forbids reselling the art itself, AI training and NFTs). The `free_cthulu v1` archive arrived with **no licence file at all**, so nobody here knows what its terms are — find out from whoever published it before this goes on a store.
