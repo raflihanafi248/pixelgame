@@ -51,6 +51,22 @@ class Player extends Phaser.Physics.Arcade.Sprite {
            this.state_ === "hurt" || this.state_ === "dead";
   }
 
+  // Something else has taken control - a conversation, a merchant's stall.
+  //
+  // This has to reset the state machine, not just play the idle animation over
+  // the top of whatever he was doing: `attack` and `hurt` only ever end when
+  // their own animation fires `animationcomplete`, so cancelling that
+  // animation strands him in that state, and `handleInput` returns early on
+  // both - he can never move again. Talking mid-swing, or one frame after a
+  // wolf connects, used to lock the knight up for the rest of the chapter.
+  rest() {
+    if (this.dead) return;
+    this.state_ = "idle";
+    this.queuedAttack = false;
+    this.setVelocityX(0);
+    this.play("hero-idle", true);
+  }
+
   onAnimComplete(anim) {
     if (anim.key.startsWith("hero-attack") || anim.key === "hero-airattack") {
       this.state_ = "idle";
@@ -188,6 +204,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.dead) return;
     const now = this.scene.time.now;
     const onGround = this.body.blocked.down || this.body.touching.down;
+
+    // `attack` and `hurt` are owned by their animation and only end when it
+    // fires `animationcomplete`. If anything has taken the animation over,
+    // that event is never coming - so if the animation no longer matches the
+    // state, the state is stale and the knight goes back to idle. Without
+    // this, one cancelled animation locks him up for the rest of the chapter.
+    const playing = this.anims.currentAnim?.key || "";
+    if (this.state_ === "attack" &&
+        !playing.startsWith("hero-attack") && playing !== "hero-airattack") {
+      this.state_ = "idle";
+      this.queuedAttack = false;
+    }
+    if (this.state_ === "hurt" && playing !== "hero-hurt") this.state_ = "idle";
 
     if (this.state_ === "dash") {
       if (now >= this.dashUntil) this.state_ = "idle";

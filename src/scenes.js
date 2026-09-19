@@ -672,10 +672,15 @@ class GameScene extends Phaser.Scene {
   }
 
   buildProps() {
+    // Every light source in the chapter collects here, and the darkness
+    // overlay erases a hole for each one. It has to be emptied *before* the
+    // camps are built: they add their own fires and torches to it, and
+    // resetting it afterwards threw all of them away - which is why the camps
+    // in the dark chapters stood in the dark next to a burning fire.
+    this.lanterns = [];
     this.buildScenery();
     this.buildCamps();
 
-    this.lanterns = [];
     for (const t of this.level.torches || []) {
       this.add.sprite(t, GROUND_Y - 4, "torch").setOrigin(0.5, 1)
         .setScale(2).setDepth(7).play("torch-burn");
@@ -792,7 +797,6 @@ class GameScene extends Phaser.Scene {
       for (const dx of camp.kind === "graves" ? [-190, 200] : [-300, 300]) {
         this.add.sprite(camp.x + dx, g, "torch").setOrigin(0.5, 1)
           .setScale(2).setDepth(7).play("torch-burn");
-        this.lanterns = this.lanterns || [];
         this.lanterns.push({ x: camp.x + dx, y: GROUND_Y - 76 });
       }
     }
@@ -814,7 +818,6 @@ class GameScene extends Phaser.Scene {
       frequency: 140, tint: [0xffb347, 0xff7a2f], alpha: { start: 0.8, end: 0 },
       blendMode: "ADD",
     }).setDepth(8);
-    this.lanterns = this.lanterns || [];
     this.lanterns.push({ x, y: y - 40 });
     this.fires.push({ x, y });
   }
@@ -895,7 +898,6 @@ class GameScene extends Phaser.Scene {
       .setAlpha(0.9).play("portal-turn");
     this.add.image(x, GROUND_Y - 86, "light").setTint(0x7fd8ff).setScale(0.5)
       .setAlpha(0.18).setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
-    this.lanterns = this.lanterns || [];
     this.lanterns.push({ x, y: GROUND_Y - 86 });
   }
 
@@ -1355,8 +1357,7 @@ class GameScene extends Phaser.Scene {
 
     // The market owns the keyboard while it is open.
     if (this.market.open) {
-      this.player.setVelocityX(0);
-      this.player.play("hero-idle", true);
+      this.player.rest();
       this.player.invulnUntil = Math.max(this.player.invulnUntil, time + 200);
       this.enemies.getChildren().forEach((en) => en.setVelocity(0, 0));
       const k = this.keys, c = this.cursors;
@@ -1375,8 +1376,7 @@ class GameScene extends Phaser.Scene {
     // the only input that does anything is "continue".
     if (this.dialogue.active) {
       this.dialogue.update(time);
-      this.player.setVelocityX(0);
-      this.player.play("hero-idle", true);
+      this.player.rest();
       this.player.invulnUntil = Math.max(this.player.invulnUntil, time + 200);
       this.enemies.getChildren().forEach((en) => en.setVelocity(0, 0));
       if (Phaser.Input.Keyboard.JustDown(this.keys.talk) ||
