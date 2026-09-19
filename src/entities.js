@@ -845,8 +845,8 @@ class Broodling extends Phaser.Physics.Arcade.Sprite {
     // Each one comes in on its own side and its own height, so a pair reads
     // as two things hunting you rather than one sprite drawn twice.
     this.lane = Phaser.Math.Between(0, 1) ? 1 : -1;
-    this.standoff = Phaser.Math.Between(46, 94);
-    this.rise = Phaser.Math.Between(-66, -14);
+    this.standoff = Phaser.Math.Between(96, 178);
+    this.rise = Phaser.Math.Between(-78, -6);
 
     this.setScale(0.7).setDepth(16);
     this.setTint(BROOD_TINT);
