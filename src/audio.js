@@ -557,6 +557,13 @@ const Sound = {
         this._noise({ dur: 0.5, vol: 0.1 * v, freq: 500, to: 4200, q: 3.5, t0, dest: out });
         break;
       }
+      case "tell": { // it is about to do something: two notes, always the same
+        const out = this._chain(place, this.sfxBus, 0.5);
+        this._osc({ type: "triangle", freq: 196, dur: 0.16, vol: 0.13 * v, t0, dest: out });
+        this._osc({ type: "triangle", freq: 262, dur: 0.3, vol: 0.13 * v, t0: t0 + 0.13, dest: out });
+        this._osc({ type: "sine", freq: 49, to: 39, dur: 0.5, vol: 0.2 * v, t0, dest: out, curve: "linear" });
+        break;
+      }
       case "lance": { // the bolt leaving: a crack, then a tearing hiss
         const out = this._chain(place, this.sfxBus, 0.42);
         this._noise({ dur: 0.06, vol: 0.34 * v, freq: 4200, to: 1400, q: 0.8, t0, dest: out });

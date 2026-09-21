@@ -388,6 +388,7 @@ const LEVELS = [
     gloom: 0.95,        // darker than the nightwood or the cave
     lightScale: 0.52,   // the knight's own torch does not reach far in here
     torchLight: 0.7,
+    swordPower: 2,      // every sword hit counts double in the lair
     goalX: null, // there is no gate here - the chapter ends at a question
     boss: "cthulhu",
     story: [

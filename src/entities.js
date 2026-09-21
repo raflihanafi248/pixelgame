@@ -18,7 +18,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setSize(20, 46);
     this.body.setOffset(52, 18);
 
-    this.maxHp = 5;
+    this.maxHp = 10;
     this.hp = this.maxHp;
     this.armor = 0; // earned from kills, soaks up hits before health does
     this.facing = 1;
@@ -30,7 +30,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.queuedAttack = false;
     this.coyoteUntil = 0;
     this.dashUntil = 0;
-    this.dashReadyAt = 0;
     this.dead = false;
     this.onIce = false;
     this.wasOnGround = true; // so spawning does not fire a landing thud
@@ -117,14 +116,20 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(this.facing * 60);
   }
 
+  // No cooldown: the roll is available again the instant the last one ends,
+  // so it can be leaned on as movement rather than saved for emergencies.
+  //
+  // The invulnerable window is shorter than the roll itself now. It used to
+  // outlast it, which was fine when there was a cooldown behind it and is not
+  // fine without one - chained rolls would have meant a knight who simply
+  // cannot be hit, which is a different game from the one this is.
   dash() {
     const now = this.scene.time.now;
-    if (this.dead || this.busy || now < this.dashReadyAt) return;
+    if (this.dead || this.busy) return;
     this.state_ = "dash";
     this.queuedAttack = false;
     this.dashUntil = now + 300;
-    this.dashReadyAt = now + 700;
-    this.invulnUntil = Math.max(this.invulnUntil, now + 320);
+    this.invulnUntil = Math.max(this.invulnUntil, now + 200);
     this.setVelocityX(this.facing * (Buffs.has("swift") ? 780 : 620));
     this.play("hero-roll");
     Sound.play("dash", { x: this.x });
@@ -383,17 +388,33 @@ const BOSS_SCALE = 2.2;
 const BOSS_DROP = 39;      // frame centre to the soles of its feet, in frame px
 const BOSS_REACH = 92;     // frame centre to the tip of the lash, in frame px
 
-// How it fights depends on how much of it is left. Each tier keeps everything
-// the one below it had and adds to it, so the hall only ever gets worse: it
-// starts by walking at you and ends by opening the floor and calling for help.
+// How it fights depends on how much of it is left, and within a tier it is
+// not improvising: it works a fixed round in a fixed order, over and over, at
+// a fixed tempo. That is the whole point - a boss you cannot predict is a
+// boss you can only survive, and this one is meant to be learned. Each third
+// it loses it stops, screams, and starts a new, longer round from the top,
+// which is the game telling you the pattern has just changed.
+//
+// `tell` is how long it stands there announcing the attack before throwing
+// it. It is the same number for every attack in a tier, so once you have the
+// rhythm of one you have the rhythm of all of them.
 const BOSS_TIERS = [
-  { moves: ["stalk", "lance", "lash"],
-    speed: 78, pause: 850, bolts: 1, rifts: 0 },
-  { moves: ["stalk", "lance", "lash", "flight", "rift"],
-    speed: 104, pause: 600, bolts: 2, rifts: 3 },
-  { moves: ["stalk", "lance", "lash", "flight", "rift", "brood"],
-    speed: 134, pause: 400, bolts: 3, rifts: 5 },
+  { pattern: ["stalk", "lash", "lance"],
+    speed: 78, pause: 800, tell: 620, bolts: 1, rifts: 0 },
+  { pattern: ["stalk", "lash", "lance", "flight", "lash", "rift"],
+    speed: 104, pause: 620, tell: 520, bolts: 2, rifts: 3 },
+  { pattern: ["stalk", "lash", "lance", "lance", "flight", "rift", "brood"],
+    speed: 134, pause: 460, tell: 430, bolts: 3, rifts: 5 },
 ];
+
+// Every attack wears its own colour during the wind-up, and no two share one.
+const TELL_COLOUR = {
+  lash: 0x3fd8c0,     // teal - it is coming for you with the tentacles
+  lance: 0x9cf05a,    // green - the bolt, the same green the bolt is
+  flight: 0xf4f4ff,   // white - it is going up, and it is coming back down
+  rift: 0xffb347,     // amber - the floor
+  brood: 0xc08cff,    // violet - it is calling for help
+};
 
 class Cthulhu extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x) {
@@ -420,8 +441,10 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
     this.dir = -1;                 // -1 is facing back down the hall, at you
     this.phase = "wait";
     this.busyUntil = 0;
-    this.lastMove = "";
-    this.repeats = 0;
+    this.step = 0;          // where it is in this tier's round
+    this.tierNow = 0;
+    this.pending = "";      // the attack the wind-up is announcing
+    this.tellRing = null;
     this.lashLive = false;
     this.lashHit = false;
     this.diveX = 0;
@@ -481,34 +504,62 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
     this.scene.onBossWakes();
   }
 
-  // ------------------------------------------------------- picking a move
-  chooseMove(time, player) {
+  // ------------------------------------------------------- working the round
+  // No dice. It takes the next move in this tier's list and announces it.
+  nextMove(time, player) {
     const tier = BOSS_TIERS[this.tier()];
-    const gap = Math.abs(player.x - this.x);
-
-    let pool = tier.moves.slice();
-    if (gap > 230) pool = pool.filter((m) => m !== "lash");   // out of reach
-    if (gap < 170) pool = pool.filter((m) => m !== "stalk");  // already there
-    if (this.scene.broodCount() >= 2) pool = pool.filter((m) => m !== "brood");
-    // Never three of the same thing running: a boss you can read is a boss
-    // you can beat, and a boss that repeats is one you stop watching.
-    if (this.repeats >= 1) pool = pool.filter((m) => m !== this.lastMove);
-    if (!pool.length) pool = ["lash"];
-
-    const move = Phaser.Utils.Array.GetRandom(pool);
-    this.repeats = move === this.lastMove ? this.repeats + 1 : 0;
-    this.lastMove = move;
-
-    // Only the two looping phases hand their animation to playState(). The
-    // rest start a one-shot here and are driven by its frames, so calling
-    // playState() after them would cut the animation off on frame one - and
-    // a lash whose `animationcomplete` never arrives never ends.
+    const move = tier.pattern[this.step % tier.pattern.length];
+    this.step += 1;
     this.face(player.x);
+
+    // Walking at you needs no announcement: the walk is the announcement.
     if (move === "stalk") {
       this.phase = "stalk";
-      this.busyUntil = time + Phaser.Math.Between(900, 1500);
+      this.busyUntil = time + Phaser.Math.Between(900, 1400);
       this.playState();
-    } else if (move === "flight") {
+      return;
+    }
+
+    this.pending = move;
+    this.phase = "tell";
+    this.busyUntil = time + tier.tell;
+    this.setVelocity(0, 0);
+    this.play("cth-idle");
+    this.raiseTell(move, tier.tell);
+    Sound.play("tell", { x: this.x });
+  }
+
+  // The wind-up: a ring on the floor at its feet that closes over exactly as
+  // long as the wind-up lasts, in the colour of whatever is about to happen.
+  // When the ring shuts, the attack lands.
+  raiseTell(move, ms) {
+    this.clearTell();
+    const colour = TELL_COLOUR[move] ?? 0xffffff;
+    this.tellRing = this.scene.add.ellipse(this.x, GROUND_Y - 6, 260, 84)
+      .setStrokeStyle(4, colour, 0.95).setDepth(46);
+    this.scene.tweens.add({
+      targets: this.tellRing, scaleX: 0.12, scaleY: 0.12, duration: ms,
+      ease: "Quad.easeIn",
+    });
+    this.halo.setTint(colour);
+  }
+
+  clearTell() {
+    if (!this.tellRing) return;
+    this.scene.tweens.killTweensOf(this.tellRing);
+    this.tellRing.destroy();
+    this.tellRing = null;
+    this.halo.setTint(0x7de04a);
+  }
+
+  // The wind-up is over. Only the two looping phases hand their animation to
+  // playState(); the rest start a one-shot here and are driven by its frames,
+  // so calling playState() after them would cut the animation off on frame
+  // one - and a lash whose `animationcomplete` never arrives never ends.
+  perform(move, time, player) {
+    const tier = BOSS_TIERS[this.tier()];
+    this.face(player.x);
+    if (move === "flight") {
       this.phase = "ascend";
       Sound.play("wings", { x: this.x });
       this.playState();
@@ -526,6 +577,24 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
     } else {
       this.callBrood(time, player);
     }
+  }
+
+  // Each third of its health it loses, it breaks off whatever it was doing,
+  // screams, and begins a new round from the top.
+  enrage() {
+    this.tierNow = this.tier();
+    this.step = 0;
+    this.clearTell();
+    this.clearMarker();
+    this.lashLive = false;
+    this.phase = "scream";
+    this.busyUntil = this.scene.time.now + 1300;
+    this.setVelocity(0, 0);
+    this.play("cth-scream");
+    Sound.play("scream", { x: this.x });
+    this.scene.cameras.main.shake(800, 0.010);
+    this.scene.cameras.main.flash(420, 40, 96, 30);
+    this.scene.bossPhaseBreak();
   }
 
   // The same belt-and-braces the knight needed: a phase that can only be left
@@ -599,7 +668,12 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
     this.busyUntil = time + 1400;
     this.play("cth-scream");
     Sound.play("scream", { x: this.x });
-    for (let i = 0; i < 2; i++) {
+    // Never more than a pair alive at once. If a pair is already out there
+    // the scream still happens on schedule and simply answers with nothing,
+    // because a round that sometimes runs short is still a round you can
+    // count, and one that sometimes skips a beat is not.
+    const room = Math.max(0, 2 - this.scene.broodCount());
+    for (let i = 0; i < room; i++) {
       this.scene.time.delayedCall(420 + i * 320, () => {
         if (!this.scene?.scene.isActive() || !this.alive_) return;
         const at = this.clampX(this.x + Phaser.Math.Between(-240, 240));
@@ -674,6 +748,8 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
     this.scene.updateBossBar();
     if (this.hp <= 0) {
       this.kneel();
+    } else if (this.tier() !== this.tierNow) {
+      this.enrage();
     } else if (this.phase === "stalk" || this.phase === "recover") {
       // It only ever flinches out of a move it was not committed to; letting
       // a sword interrupt a cast would turn the whole fight into a stunlock.
@@ -691,6 +767,7 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
     this.body.enable = false;
     this.lashLive = false;
     this.clearMarker();
+    this.clearTell();
     this.setVelocity(0, 0);
     this.setPosition(this.x, this.groundY);
     this.play("cth-sink");
@@ -768,6 +845,24 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
         break;
       }
 
+      case "tell": {
+        // It closes on you during the wind-up for the one attack that has to
+        // be in reach, so the round never skips a beat and the walk-in is
+        // itself part of the warning.
+        const gap = Math.abs(player.x - this.x);
+        const closing = this.pending === "lash" && gap > BOSS_REACH * BOSS_SCALE * 0.7;
+        this.face(player.x);
+        this.setVelocityX(closing ? this.dir * tier.speed * 1.35 : 0);
+        this.setVelocityY((this.groundY - this.y) * 4);
+        this.play(closing ? "cth-walk" : "cth-idle", true);
+        if (this.tellRing) this.tellRing.setPosition(this.x, GROUND_Y - 6);
+        if (time > this.busyUntil) {
+          this.clearTell();
+          this.perform(this.pending, time, player);
+        }
+        break;
+      }
+
       case "cast":
         this.setVelocity(0, (this.groundY - this.y) * 4);
         break;
@@ -825,7 +920,7 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
       default: // recover: the only window where it is simply standing there
         this.face(player.x);
         this.setVelocity(0, (this.groundY - this.y) * 4);
-        if (time > this.busyUntil) this.chooseMove(time, player);
+        if (time > this.busyUntil) this.nextMove(time, player);
     }
   }
 }

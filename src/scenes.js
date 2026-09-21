@@ -155,7 +155,7 @@ const PANEL_CONTROLS = [
   ["A / D    ← →", "move"],
   ["W / ↑ / SPACE", "jump — hold it for a higher jump"],
   ["J   or   X", "attack — a three-hit combo, and in the air"],
-  ["SHIFT   or   L", "dash, with a moment of invulnerability"],
+  ["SHIFT   or   L", "dash - no cooldown, roll as often as you like"],
   ["E", "talk to someone, or open a stall"],
   ["1 – 5", "drink an ability from your satchel"],
   ["ENTER", "carry a conversation on"],
@@ -1284,7 +1284,10 @@ class GameScene extends Phaser.Scene {
   // Sword hit: a box in front of the player, checked on the swing's active frames.
   playerHitCheck(player) {
     const reach = 92;
-    const damage = Buffs.has("whet") ? 2 : 1;
+    // The lair doubles what the knight's sword is worth. He is not swinging
+    // at goblins down there, and the thing he is swinging at has more health
+    // than the rest of the game put together.
+    const damage = (Buffs.has("whet") ? 2 : 1) * (this.level.swordPower ?? 1);
     const box = new Phaser.Geom.Rectangle(
       player.facing > 0 ? player.x : player.x - reach,
       player.y - 50, reach, 96
@@ -1424,6 +1427,17 @@ class GameScene extends Phaser.Scene {
         onComplete: () => g.destroy(),
       });
     }
+  }
+
+  // It has lost another third and started a new round. The bar says so too,
+  // in case the scream was not enough.
+  bossPhaseBreak() {
+    if (!this.bossBar) return;
+    this.bossBar.setFillStyle(0xffffff);
+    this.tweens.add({
+      targets: this.bossBarBg, scaleY: 1.5, duration: 140, yoyo: true, repeat: 2,
+      onComplete: () => this.bossBar?.setFillStyle(0x74c23a),
+    });
   }
 
   // It looks up. Only now is there anything to put a health bar on.

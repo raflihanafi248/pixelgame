@@ -29,7 +29,7 @@ Then open `http://localhost:8080`.
 | `A` / `D` or `←` `→` | Move |
 | `W` / `↑` / `SPACE` | Jump (hold for a higher jump) |
 | `J` or `X` | Attack — three-hit sword combo, air attack while jumping |
-| `SHIFT` or `L` | Dash (brief invulnerability) |
+| `SHIFT` or `L` | Dash — no cooldown, so it doubles as movement (invulnerable for most of the roll, not all of it) |
 | `E` | Talk to the person you are standing next to, or open a merchant's stall |
 | `1` – `5` | Drink an ability out of your satchel |
 | `↑` `↓` / `ENTER` / `U` / `Q` | In the market: choose, buy, use, leave |
@@ -52,16 +52,26 @@ The title screen is a menu: `↑` `↓` to choose, `ENTER` to select. **CONTROLS
 
 It has six moves and picks between them by how much of it you have left, never the same one three times running:
 
-| Move | What you see | From |
+| Move | What you see | Wind-up ring |
 | --- | --- | --- |
-| **Stalk** | it walks you down on foot, and standing next to it costs you | always |
-| **Void lance** | green light gathers at its claw, then a bolt across the hall — one, then two, then a three-way fan | always |
-| **Lash** | tentacles out to twice a sword's reach; jump it | always |
-| **Dive** | it takes to the air, hangs over a marked spot, and comes down on it | below two thirds |
-| **Rift** | it screams and the floor splits — tendrils come up out of the stone, walking towards you | below two thirds |
-| **Brood** | the same scream, answered: half-size copies of it drop out of the dark | below a third |
+| **Stalk** | it walks you down on foot, and standing next to it costs you | — (the walk is the warning) |
+| **Lash** | tentacles out to twice a sword's reach; jump it | teal |
+| **Void lance** | green light gathers at its claw, then a bolt across the hall — one, then two, then a three-way fan | green |
+| **Dive** | it takes to the air, hangs over a marked spot, and comes down on it | white |
+| **Rift** | the floor splits and tendrils come up out of the stone, walking towards you | amber |
+| **Brood** | a scream, answered: half-size copies of it drop out of the dark | violet |
 
-The crack in the floor glows for a beat before anything comes out of it, and the dive marks the ground before it drops — every attack is readable if you are watching. It is only reachable with a sword while it is on the ground, and the pause after a move is your opening. The score builds as it weakens, and stops dead the moment it goes down.
+**It is not improvising.** Inside a phase it works one fixed round in one fixed order, over and over, at one fixed tempo — and every attack in that phase takes exactly the same length of wind-up. Before each one it plants a coloured ring on the floor at its feet that closes as the wind-up runs out; when the ring shuts, the attack lands. The colour is the attack, and no two share one.
+
+| Phase | The round it works |
+| --- | --- |
+| above two thirds | stalk → lash → lance |
+| below two thirds | stalk → lash → lance → dive → lash → rift |
+| below a third | stalk → lash → lance → lance → dive → rift → brood |
+
+Every third of its health it loses, it breaks off whatever it was doing, screams, and starts the new round from the top — that scream is the game telling you the pattern you just learned has changed. On top of the ring, each attack keeps its own tell: the crack glows for a beat before anything comes out of it, and the dive marks the ground before it drops.
+
+It is only reachable with a sword while it is on the ground, and the pause after each move is your opening. **Your sword counts double in the lair** — nowhere else. The score builds as it weakens, and stops dead the moment it goes down.
 
 At zero health it does not die. It kneels, the music cuts out, and it asks you one question. What you answer is the end of the game.
 
@@ -126,7 +136,7 @@ Every sound is synthesised live through the Web Audio API — there is not a sin
 ## Systems
 
 - **The HUD** — a framed orb that drains from the top as you take damage, with the count inside it; a yellow bar for armour that is only as long as the plates you can hold; and a segmented blue bar for how long the ability you drank has left. Below it, the satchel: five slots showing what you are carrying and which key drinks it.
-- **Health and lives** — 5 health, 3 lives, brief invulnerability after a hit.
+- **Health and lives** — 10 health, 3 lives, brief invulnerability after a hit.
 - **Armour** — every enemy you defeat grants three plates of armour. While it holds (a shell around the knight, and the yellow bar in the HUD) hits land on the armour instead of your health. The third hit shatters it; defeat another enemy to earn it back. Pits stay lethal — armour will not save you there.
 - **Checkpoints** — stone lanterns along the way; dying returns you to the last one.
 - **Crystals** — the game's currency. You pick them up along the route and earn them for defeating enemies, and you spend them at a merchant.
