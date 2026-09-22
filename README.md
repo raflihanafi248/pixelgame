@@ -66,10 +66,10 @@ It has six moves and picks between them by how much of it you have left, never t
 | Phase | The round it works |
 | --- | --- |
 | above two thirds | stalk → lash → lance |
-| below two thirds | stalk → **rift** → lash → dive → lance → lash |
-| below a third | stalk → **brood** → lash → lance → dive → rift → lance |
+| below two thirds | **rift** → stalk → lash → dive → lance → lash |
+| below a third | **brood** → stalk → lash → lance → dive → rift → lance |
 
-Each round opens with the walk — the same anchor every time — and then leads with whatever that phase has just learned to do, so the scream that started it is answered by the new thing straight away.
+Each round opens with whatever that phase has just learned to do, so the scream that began the phase is answered by the new move straight away. A phase is only twelve health wide and your sword counts double down here, so anything further down the round than first risks never happening at all.
 
 Every third of its health it loses, it breaks off whatever it was doing, screams, and starts the new round from the top — that scream is the game telling you the pattern you just learned has changed. On top of the ring, each attack keeps its own tell: the crack glows for a beat before anything comes out of it, and the dive marks the ground before it drops.
 
