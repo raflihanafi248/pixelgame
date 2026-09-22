@@ -398,12 +398,20 @@ const BOSS_REACH = 92;     // frame centre to the tip of the lash, in frame px
 // `tell` is how long it stands there announcing the attack before throwing
 // it. It is the same number for every attack in a tier, so once you have the
 // rhythm of one you have the rhythm of all of them.
+// A tier's round opens with the thing that tier has just learned to do, so
+// the scream that began it is answered by the new move immediately. This is
+// not decoration: a tier is only twelve health wide, and a knight swinging
+// hard can cross one in a handful of seconds. Anything further down the
+// round than first risks never happening at all - the rift and the brood
+// were both being skipped outright before they were moved to the front.
+//
+// The opening tier has nothing new to lead with, so it leads with the walk.
 const BOSS_TIERS = [
   { pattern: ["stalk", "lash", "lance"],
     speed: 78, pause: 800, tell: 620, bolts: 1, rifts: 0 },
-  { pattern: ["stalk", "lash", "lance", "flight", "lash", "rift"],
+  { pattern: ["rift", "stalk", "lash", "flight", "lance", "lash"],
     speed: 104, pause: 620, tell: 520, bolts: 2, rifts: 3 },
-  { pattern: ["stalk", "lash", "lance", "lance", "flight", "rift", "brood"],
+  { pattern: ["brood", "stalk", "lash", "lance", "flight", "rift", "lance"],
     speed: 134, pause: 460, tell: 430, bolts: 3, rifts: 5 },
 ];
 

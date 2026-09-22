@@ -66,8 +66,10 @@ It has six moves and picks between them by how much of it you have left, never t
 | Phase | The round it works |
 | --- | --- |
 | above two thirds | stalk → lash → lance |
-| below two thirds | stalk → lash → lance → dive → lash → rift |
-| below a third | stalk → lash → lance → lance → dive → rift → brood |
+| below two thirds | stalk → **rift** → lash → dive → lance → lash |
+| below a third | stalk → **brood** → lash → lance → dive → rift → lance |
+
+Each round opens with the walk — the same anchor every time — and then leads with whatever that phase has just learned to do, so the scream that started it is answered by the new thing straight away.
 
 Every third of its health it loses, it breaks off whatever it was doing, screams, and starts the new round from the top — that scream is the game telling you the pattern you just learned has changed. On top of the ring, each attack keeps its own tell: the crack glows for a beat before anything comes out of it, and the dive marks the ground before it drops.
 
@@ -154,7 +156,7 @@ Odrin's stalls sell abilities for crystals — one in every chapter, including t
 | Swiftness Draught | 25 | 45s | Run faster, dash further |
 | Warden's Ward | 35 | 60s | Armour refills now and holds five hits instead of three |
 | Ember Flask | 40 | 45s | Every connecting swing bursts into everything within 180px |
-| Heart of Oak | 20 | — | Restores two hearts on the spot |
+| Heart of Oak | 20 | — | Restores four hearts on the spot |
 
 Heart of Oak refuses to be drunk (and stays in your satchel) if you are already at full health.
 

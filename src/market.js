@@ -22,8 +22,11 @@ const ABILITIES = {
     blurb: "Each swing bursts into nearby foes.",
   },
   heal: {
+    // Four, not two: the knight carries ten health now, and a flask worth a
+    // fifth of him is not worth twenty crystals. This keeps it the same
+    // fraction of a full knight that it always was.
     name: "Heart of Oak", icon: "icon_heart", cost: 20, seconds: 0,
-    blurb: "Restores two hearts, here and now.",
+    blurb: "Restores four hearts, here and now.",
   },
 };
 
@@ -239,7 +242,7 @@ function useAbility(scene, key) {
   Satchel.take(key);
 
   if (key === "heal") {
-    scene.player.hp = Math.min(scene.player.maxHp, scene.player.hp + 2);
+    scene.player.hp = Math.min(scene.player.maxHp, scene.player.hp + 4);
   } else {
     Buffs.grant(key);
     if (key === "ward") scene.player.gainArmor();
@@ -247,6 +250,6 @@ function useAbility(scene, key) {
   Sound.play("buff");
   scene.refreshHud();
   scene.flashAbility(key);
-  return { ok: true, text: key === "heal" ? "Two hearts restored."
+  return { ok: true, text: key === "heal" ? "Four hearts restored."
                                           : `${ab.name} — ${ab.seconds}s` };
 }
