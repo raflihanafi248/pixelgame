@@ -430,7 +430,11 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.maxHp = 36;
+    // Fifty-six is twenty-eight sword hits at the lair's doubled damage, and
+    // it divides into three tiers of nine or ten - enough of each for its
+    // round to come round twice, which is what makes a round learnable at
+    // all. At thirty-six the whole fight was over in eleven seconds.
+    this.maxHp = 56;
     this.hp = this.maxHp;
     this.alive_ = true;
     this.kneeling = false;
