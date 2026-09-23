@@ -879,8 +879,17 @@ class Cthulhu extends Phaser.Physics.Arcade.Sprite {
         // It leans into the swing, which also closes the last of the gap.
         this.setVelocityX(this.dir * 60);
         this.setVelocityY((this.groundY - this.y) * 4);
+        // The knight's own bounds are his 96x96 frame doubled - 192 square,
+        // with about seventy-six pixels of empty air on each side of him.
+        // Testing the lash against that landed it long before the tentacles
+        // reached him, which is the single worst thing a telegraphed attack
+        // can do: it makes the wind-up a lie. His physics body is the part
+        // of him that is actually there.
+        const pb = player.body;
         if (this.lashLive && !this.lashHit && !player.dead &&
-            Phaser.Geom.Rectangle.Overlaps(this.lashBox(), player.getBounds())) {
+            Phaser.Geom.Rectangle.Overlaps(
+              this.lashBox(),
+              new Phaser.Geom.Rectangle(pb.x, pb.y, pb.width, pb.height))) {
           this.lashHit = true;
           player.hurt(1, this.x);
         }
